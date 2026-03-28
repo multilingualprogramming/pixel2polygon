@@ -1,0 +1,4 @@
+# Runtime dependencies for compiling hexagonify.wasm
+# Install with: pip install -r requirements-build.txt
+multilingualprogramming
+wasmtime

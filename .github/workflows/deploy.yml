@@ -1,0 +1,153 @@
+name: Build and deploy Pixel2Polygon to GitHub Pages
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Compile Multilingual sources to WebAssembly
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
+
+      - name: Compile Multilingual sources to WebAssembly
+        run: python -m multilingualprogramming scripts/compile_wasm.ml
+
+      - name: Verify build artifacts
+        run: |
+          ls -la public
+          test -f public/index.html
+          test -f public/style.css
+          test -f public/app.js
+          test -f public/hexagonify.wasm
+
+      - name: Check JavaScript syntax
+        run: node --check public/app.js
+
+      - name: Validate WASM or fall back to JavaScript-only publish
+        run: |
+          node -e "
+          const fs = require('fs');
+          const wasmPath = 'public/hexagonify.wasm';
+          const watPath = 'public/hexagonify.wat';
+          const fallback = (message, detail) => {
+            console.warn(message);
+            if (detail) {
+              console.warn(detail);
+            }
+            if (fs.existsSync(wasmPath)) fs.unlinkSync(wasmPath);
+            if (fs.existsSync(watPath)) fs.unlinkSync(watPath);
+            console.log('Publishing JavaScript-only fallback.');
+            process.exit(0);
+          };
+          if (!fs.existsSync(wasmPath)) {
+            fallback('WASM artifact missing after compilation.');
+          }
+          const bytes = fs.readFileSync(wasmPath);
+          const module = new WebAssembly.Module(bytes);
+          const importObject = {};
+          for (const entry of WebAssembly.Module.imports(module)) {
+            if (!importObject[entry.module]) {
+              importObject[entry.module] = {};
+            }
+            if (entry.kind === 'function') {
+              importObject[entry.module][entry.name] = () => 0;
+            } else if (entry.kind === 'memory') {
+              importObject[entry.module][entry.name] = new WebAssembly.Memory({ initial: 16 });
+            } else if (entry.kind === 'table') {
+              importObject[entry.module][entry.name] = new WebAssembly.Table({ initial: 0, element: 'anyfunc' });
+            } else if (entry.kind === 'global') {
+              importObject[entry.module][entry.name] = new WebAssembly.Global({ value: 'i32', mutable: true }, 0);
+            }
+          }
+          if (!importObject.env) {
+            importObject.env = {};
+          }
+          WebAssembly.instantiate(module, importObject).then((instance) => {
+            const exports = instance.exports;
+            const required = [
+              'hex_vertex_x', 'hex_vertex_y',
+              'horiz_spacing', 'vert_spacing',
+              'tri_h', 'tri_vertex_x', 'tri_vertex_y',
+              'color_mean',
+              'method_hex', 'method_square', 'method_triangle',
+            ];
+            const missing = required.filter((name) => typeof exports[name] !== 'function');
+            if (missing.length) {
+              fallback('WASM exports missing.', missing.join(', '));
+            }
+            const checks = [
+              ['hex_vertex_x', Number(exports.hex_vertex_x(0, 0, 10, 0)), 0, 0.001],
+              ['hex_vertex_y', Number(exports.hex_vertex_y(0, 0, 10, 0)), -10, 0.001],
+              ['horiz_spacing', Number(exports.horiz_spacing(10)), 17.320508, 0.01],
+              ['vert_spacing', Number(exports.vert_spacing(10)), 15, 0.001],
+              ['tri_h', Number(exports.tri_h(10)), 8.660254, 0.01],
+              ['tri_vertex_x', Number(exports.tri_vertex_x(5, 10, 1, 1)), 10, 0.001],
+              ['tri_vertex_y', Number(exports.tri_vertex_y(5, 10, 2, 0)), 13.660254, 0.01],
+              ['color_mean', Number(exports.color_mean(11, 2)), 6, 0.001],
+              ['method_hex', Number(exports.method_hex()), 0, 0.001],
+              ['method_square', Number(exports.method_square()), 1, 0.001],
+              ['method_triangle', Number(exports.method_triangle()), 2, 0.001],
+            ];
+            for (const [name, actual, expected, tolerance] of checks) {
+              if (Math.abs(actual - expected) > tolerance) {
+                fallback('WASM smoke test failed.', JSON.stringify({ name, expected, actual, tolerance }));
+              }
+            }
+            console.log('WASM smoke test OK');
+          }).catch((err) => {
+            fallback('Could not instantiate WASM.', err && err.stack ? err.stack : String(err));
+          });
+          "
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "public"
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

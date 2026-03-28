@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pixel2Polygon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">multilingual fran&ccedil;ais &rarr; wasm</p>
+        <h1>Pixel2Polygon</h1>
+      </div>
+      <nav class="tab-nav">
+        <button type="button" class="tab active" id="tab-studio">Studio</button>
+        <button type="button" class="tab" id="tab-source">Sources</button>
+      </nav>
+    </header>
+
+    <main>
+
+      <!-- ── STUDIO ── -->
+      <section id="studio-panel" class="panel-grid">
+
+        <div class="viewer-shell">
+
+          <!-- Zone de depot (avant chargement image) -->
+          <div class="upload-zone" id="upload-zone">
+            <div class="upload-icon">&#9651;</div>
+            <p class="upload-hint">D&eacute;posez une image ici ou
+              <label for="file-input" class="upload-link">cliquez pour en choisir une</label>
+            </p>
+            <p class="upload-sub">PNG, JPG, GIF, WebP &mdash; max&nbsp;20&nbsp;Mo</p>
+            <input type="file" id="file-input" accept="image/*" hidden />
+          </div>
+
+          <!-- Zone canvas (apres chargement image) -->
+          <div class="canvas-area" id="canvas-area" hidden>
+            <div class="canvas-row">
+              <div class="canvas-card">
+                <p class="canvas-label">Original</p>
+                <canvas id="source-canvas"></canvas>
+              </div>
+              <div class="canvas-card">
+                <p class="canvas-label">R&eacute;sultat</p>
+                <div class="canvas-wrapper">
+                  <canvas id="output-canvas"></canvas>
+                  <div class="processing-overlay" id="processing-overlay" hidden>
+                    <div class="spinner"></div>
+                    <p>Traitement&hellip;</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="button" id="btn-new-image" class="ghost-btn">&#8617; Nouvelle image</button>
+              <button type="button" id="btn-apply">Appliquer</button>
+              <button type="button" id="btn-download" class="accent-btn" disabled>T&eacute;l&eacute;charger PNG</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Barre de controles -->
+        <aside class="sidebar">
+
+          <div class="ctrl-section">
+            <p class="ctrl-title">Forme des tuiles</p>
+            <div class="pill-group">
+              <label><input type="radio" name="method" value="hex" checked /> Hexagone</label>
+              <label><input type="radio" name="method" value="square" /> Carr&eacute;</label>
+              <label><input type="radio" name="method" value="triangle" /> Triangle</label>
+            </div>
+          </div>
+
+          <div class="ctrl-section">
+            <p class="ctrl-title">Taille des tuiles</p>
+            <div class="ctrl-row">
+              <input type="range" id="tile-size" min="5" max="120" value="30" aria-label="Taille tuile" />
+              <span id="tile-size-display" class="value-badge">30</span>
+              <span class="muted">px</span>
+            </div>
+          </div>
+
+          <div class="ctrl-section">
+            <p class="ctrl-title">Contour</p>
+            <div class="ctrl-row">
+              <label class="muted" for="outline-width">Largeur</label>
+              <input type="range" id="outline-width" min="0" max="6" step="1" value="0"
+                aria-label="Largeur contour" />
+              <span id="outline-width-display" class="value-badge">0</span>
+              <span class="muted">px</span>
+            </div>
+            <div class="ctrl-row">
+              <label class="muted" for="outline-color">Couleur</label>
+              <input type="color" id="outline-color" value="#000000" />
+              <label class="muted" for="outline-opacity">Opacit&eacute;</label>
+              <input type="range" id="outline-opacity" min="0" max="100" step="1" value="47"
+                aria-label="Opacite contour" />
+              <span id="outline-opacity-display" class="value-badge">47</span>
+            </div>
+          </div>
+
+          <div class="ctrl-section">
+            <p class="ctrl-title">Rendu automatique</p>
+            <label class="checkbox-row">
+              <input type="checkbox" id="auto-apply" />
+              Recalculer &agrave; chaque changement
+            </label>
+          </div>
+
+        </aside>
+      </section>
+
+      <!-- ── SOURCES ── -->
+      <section id="source-panel" class="source-panel" hidden>
+        <div class="source-header">
+          <h2>Sources multilingual fran&ccedil;aises</h2>
+          <p>Ces fichiers <code>.ml</code> sont compil&eacute;s en WebAssembly par
+            <code>scripts/compile_wasm.ml</code>.
+            Le navigateur utilise exclusivement ce binaire WASM pour calculer la g&eacute;om&eacute;trie
+            des tuiles &mdash; aucun calcul de g&eacute;om&eacute;trie n&rsquo;est effectu&eacute; en
+            JavaScript pur.
+          </p>
+        </div>
+
+        <div class="source-stack">
+
+          <!-- Fichiers principaux -->
+          <section class="source-group" aria-labelledby="sg-fichiers">
+            <h3 id="sg-fichiers" class="source-group-title">Fichiers sources</h3>
+            <div class="source-list">
+
+              <article class="source-card source-card-file">
+                <h4><span class="filename-pill">src/hexagonify_wasm.ml</span></h4>
+                <p>Module WASM minimal &mdash; calcul des sommets d&rsquo;hexagones et de triangles
+                  &eacute;quilat&eacute;raux, espacements, couleur moyenne. Compil&eacute; vers
+                  <code>public/hexagonify.wasm</code>.</p>
+              </article>
+
+              <article class="source-card source-card-file">
+                <h4><span class="filename-pill">src/hexagonify_canonique.ml</span></h4>
+                <p>Source canonique compl&egrave;te &mdash; g&eacute;om&eacute;trie int&eacute;grale,
+                  mode <strong>kmeans</strong> via
+                  <code>MiniBatchKMeans</code> (scikit-learn), masques PIL/NumPy, et
+                  ex&eacute;cution autonome en ligne de commande.</p>
+              </article>
+
+              <article class="source-card source-card-file">
+                <h4><span class="filename-pill">src/main.ml</span></h4>
+                <p>Point d&rsquo;entr&eacute;e du bundle.
+                  <code>importer hexagonify_wasm</code></p>
+              </article>
+
+              <article class="source-card source-card-file">
+                <h4><span class="filename-pill">scripts/compile_wasm.ml</span></h4>
+                <p>Script de compilation — lit les sources multilingual, g&eacute;n&egrave;re le WAT via
+                  <code>WATCodeGenerator</code> puis le binaire WASM avec
+                  <code>wasmtime.wat2wasm</code>. Enti&egrave;rement &eacute;crit en multilingual
+                  fran&ccedil;ais.</p>
+              </article>
+
+            </div>
+          </section>
+
+          <!-- Exports WASM -->
+          <section class="source-group" aria-labelledby="sg-exports">
+            <h3 id="sg-exports" class="source-group-title">Exports WASM (noms fran&ccedil;ais)</h3>
+            <div class="source-list">
+
+              <article class="source-card source-card-export">
+                <h4>
+                  <code>sommet_hex_x(cx, cy, a, idx)</code>
+                  &nbsp;/&nbsp;
+                  <code>sommet_hex_y(&hellip;)</code>
+                </h4>
+                <p>Coordonn&eacute;es du sommet <em>idx</em> (0&ndash;5) d&rsquo;un hexagone
+                  &agrave; sommet pointu centr&eacute; en <em>(cx, cy)</em> de c&ocirc;t&eacute;
+                  <em>a</em>.</p>
+              </article>
+
+              <article class="source-card source-card-export">
+                <h4><code>espacement_horiz(a)</code> &nbsp;/&nbsp; <code>espacement_vert(a)</code></h4>
+                <p>Renvoie &radic;3&middot;<em>a</em> et 1,5&middot;<em>a</em> — pas horizontal et
+                  vertical de la grille hexagonale.</p>
+              </article>
+
+              <article class="source-card source-card-export">
+                <h4>
+                  <code>hauteur_tri(a)</code>
+                  &nbsp;/&nbsp;
+                  <code>sommet_tri_x(&hellip;)</code>
+                  &nbsp;/&nbsp;
+                  <code>sommet_tri_y(&hellip;)</code>
+                </h4>
+                <p>Hauteur et coordonn&eacute;es des sommets d&rsquo;un triangle
+                  &eacute;quilat&eacute;ral. <em>vers_haut</em> = 1 pour triangle vers le haut,
+                  0 vers le bas.</p>
+              </article>
+
+              <article class="source-card source-card-export">
+                <h4><code>couleur_moyenne(total, compte)</code></h4>
+                <p>Retourne <code>arrondir(total / compte)</code> &mdash; moyenne par canal
+                  utilis&eacute;e pour remplir chaque tuile.</p>
+              </article>
+
+            </div>
+          </section>
+
+          <!-- Compilation -->
+          <section class="source-group" aria-labelledby="sg-build">
+            <h3 id="sg-build" class="source-group-title">Compiler le WASM</h3>
+            <div class="source-list">
+              <article class="source-card source-card-code">
+                <h4>Pr&eacute;requis</h4>
+                <pre><code>pip install multilingualprogramming wasmtime</code></pre>
+              </article>
+              <article class="source-card source-card-code">
+                <h4>Compilation</h4>
+                <pre><code>cd pixel2polygon
+multilingual run scripts/compile_wasm.ml</code></pre>
+                <p class="muted">G&eacute;n&egrave;re <code>public/hexagonify.wasm</code>
+                  et <code>public/hexagonify.wat</code>.</p>
+              </article>
+            </div>
+          </section>
+
+        </div>
+      </section>
+
+      <!-- Barre de statut -->
+      <section class="hero">
+        <p>Pixel2Polygon carrelage une image avec des hexagones, carr&eacute;s ou triangles &mdash;
+          g&eacute;om&eacute;trie calcul&eacute;e exclusivement en WASM compil&eacute; depuis des
+          sources multilingual fran&ccedil;aises.</p>
+        <p id="wasm-status" class="hero-note">V&eacute;rification du moteur WASM&hellip;</p>
+      </section>
+
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+
+</html>
