@@ -1,4 +1,4 @@
 # Runtime dependencies for compiling hexagonify.wasm
 # Install with: pip install -r requirements-build.txt
-multilingualprogramming
+git+https://github.com/johnsamuelwrites/multilingual.git
 wasmtime
