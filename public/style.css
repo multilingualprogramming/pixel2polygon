@@ -253,13 +253,17 @@ main {
 .processing-overlay {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
   background: rgba(7, 16, 25, 0.72);
   border-radius: 6px;
+}
+
+.processing-overlay.actif {
+  display: flex;
 }
 
 .processing-overlay p {

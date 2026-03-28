@@ -494,7 +494,7 @@ async function rendreSortie(imgEl) {
   const status = document.getElementById("wasm-status");
   const token = ++renderToken;
 
-  overlay.hidden = false;
+  overlay.classList.add("actif");
   btnDl.disabled = true;
 
   try {
@@ -525,7 +525,7 @@ async function rendreSortie(imgEl) {
     console.error("[pixel2polygon] Echec du rendu :", err);
     status.textContent = `Le rendu a echoue pour le mode ${state.method}.`;
   } finally {
-    if (token === renderToken) overlay.hidden = true;
+    if (token === renderToken) overlay.classList.remove("actif");
   }
 }
 
@@ -553,7 +553,7 @@ function afficherZoneUpload() {
   document.getElementById("canvas-area").hidden = true;
   loadedImage = null;
   document.getElementById("btn-download").disabled = true;
-  document.getElementById("processing-overlay").hidden = true;
+  document.getElementById("processing-overlay").classList.remove("actif");
 }
 
 function debounce(fn, delai) {
