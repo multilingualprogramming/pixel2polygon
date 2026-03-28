@@ -352,6 +352,21 @@ button.accent-btn:hover:not(:disabled) {
   gap: 10px;
 }
 
+.select-wrap {
+  display: block;
+}
+
+.select-wrap select {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 10px 12px;
+}
+
 .ctrl-title {
   margin: 0;
   font-size: 0.75rem;
@@ -468,9 +483,13 @@ input[type="color"] {
 }
 
 .source-header p {
-  margin: 0;
+  margin: 0 0 10px;
   color: var(--muted);
   line-height: 1.6;
+}
+
+.source-header p:last-child {
+  margin-bottom: 0;
 }
 
 .source-stack {

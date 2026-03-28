@@ -1,17 +1,5 @@
-// ──────────────────────────────────────────────────────────────
-//  Pixel2Polygon  — app.js
-//
-//  Toute la geometrie des tuiles est calculee par le module WASM
-//  compile depuis les sources multilingual francophones :
-//    src/hexagonify_wasm.ml
-//
-//  L'application ne fonctionne pas sans ce binaire WASM.
-//  Aucun calcul de geometrie n'est effectue en JavaScript pur.
-// ──────────────────────────────────────────────────────────────
-
 const MAX_DIM = 1200;
-
-// ── Etat ───────────────────────────────────────────────────────
+const TAU = Math.PI * 2;
 
 const state = {
   method: "hex",
@@ -24,8 +12,7 @@ const state = {
 
 let wasm = null;
 let loadedImage = null;
-
-// ── Chargement WASM ────────────────────────────────────────────
+let renderToken = 0;
 
 async function chargerWasm() {
   const status = document.getElementById("wasm-status");
@@ -41,19 +28,18 @@ async function chargerWasm() {
     const instance = await WebAssembly.instantiate(module, importObject);
 
     if (!validerExports(instance.exports)) {
-      throw new Error("Les exports WASM ne correspondent pas a l'interface hexagonify_wasm.ml.");
+      throw new Error("Les exports WASM ne correspondent pas a l'interface attendue.");
     }
 
     wasm = instance.exports;
-    status.textContent = "Moteur WASM charge depuis les sources multilingual francaises.";
+    status.textContent = "Moteur WASM charge. Les primitives de geometrie et la moyenne couleur sont disponibles.";
     btnApply.disabled = false;
     document.getElementById("upload-zone").style.pointerEvents = "auto";
     document.getElementById("upload-zone").style.opacity = "1";
   } catch (err) {
     wasm = null;
-    status.textContent = `WASM requis — compilez d'abord avec : multilingual run scripts/compile_wasm.ml`;
+    status.textContent = "WASM requis. Compilez d'abord avec : multilingual run scripts/compile_wasm.ml";
     btnApply.disabled = true;
-    // Grey out the upload zone to signal the app is non-functional
     document.getElementById("upload-zone").style.opacity = "0.4";
     document.getElementById("upload-zone").style.pointerEvents = "none";
     console.error("[pixel2polygon] Echec du chargement WASM :", err);
@@ -64,9 +50,9 @@ function construireImports(module) {
   const obj = {};
   for (const entry of WebAssembly.Module.imports(module)) {
     if (!obj[entry.module]) obj[entry.module] = {};
-    if (entry.kind === "function")  obj[entry.module][entry.name] = () => 0;
+    if (entry.kind === "function") obj[entry.module][entry.name] = () => 0;
     else if (entry.kind === "memory") obj[entry.module][entry.name] = new WebAssembly.Memory({ initial: 16 });
-    else if (entry.kind === "table")  obj[entry.module][entry.name] = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
+    else if (entry.kind === "table") obj[entry.module][entry.name] = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
     else if (entry.kind === "global") obj[entry.module][entry.name] = new WebAssembly.Global({ value: "i32", mutable: true }, 0);
   }
   if (!obj.env) obj.env = {};
@@ -74,7 +60,6 @@ function construireImports(module) {
 }
 
 function validerExports(exports) {
-  // Noms francais issus de hexagonify_wasm.ml
   const requis = [
     "sommet_hex_x", "sommet_hex_y",
     "espacement_horiz", "espacement_vert",
@@ -85,11 +70,9 @@ function validerExports(exports) {
   for (const nom of requis) {
     if (typeof exports[nom] !== "function") return false;
   }
-  // Verification numerique : espacement_horiz(10) doit valoir sqrt(3)*10 ≈ 17.3205
   try {
     const hs = Number(exports.espacement_horiz(10));
     if (Math.abs(hs - 17.320508) > 0.01) return false;
-    // sommet_hex_x(0, 0, 10, 0) doit valoir 0
     const vx = Number(exports.sommet_hex_x(0, 0, 10, 0));
     if (Math.abs(vx) > 0.001) return false;
   } catch {
@@ -98,42 +81,94 @@ function validerExports(exports) {
   return true;
 }
 
-// ── Appels WASM directs (noms francais de hexagonify_wasm.ml) ──
+function sommet_hex_x(cx, cy, a, idx) { return Number(wasm.sommet_hex_x(cx, cy, a, idx)); }
+function sommet_hex_y(cx, cy, a, idx) { return Number(wasm.sommet_hex_y(cx, cy, a, idx)); }
+function espacement_horiz(a) { return Number(wasm.espacement_horiz(a)); }
+function espacement_vert(a) { return Number(wasm.espacement_vert(a)); }
+function hauteur_tri(a) { return Number(wasm.hauteur_tri(a)); }
+function sommet_tri_x(x, a, idx, vh) { return Number(wasm.sommet_tri_x(x, a, idx, vh)); }
+function sommet_tri_y(y, a, idx, vh) { return Number(wasm.sommet_tri_y(y, a, idx, vh)); }
+function couleur_moyenne(total, compte) { return Number(wasm.couleur_moyenne(total, compte)); }
 
-function sommet_hex_x(cx, cy, a, idx)     { return Number(wasm.sommet_hex_x(cx, cy, a, idx)); }
-function sommet_hex_y(cx, cy, a, idx)     { return Number(wasm.sommet_hex_y(cx, cy, a, idx)); }
-function espacement_horiz(a)              { return Number(wasm.espacement_horiz(a)); }
-function espacement_vert(a)              { return Number(wasm.espacement_vert(a)); }
-function hauteur_tri(a)                  { return Number(wasm.hauteur_tri(a)); }
-function sommet_tri_x(x, a, idx, vh)     { return Number(wasm.sommet_tri_x(x, a, idx, vh)); }
-function sommet_tri_y(y, a, idx, vh)     { return Number(wasm.sommet_tri_y(y, a, idx, vh)); }
-function couleur_moyenne(total, compte)  { return Number(wasm.couleur_moyenne(total, compte)); }
+function apothem(n, side) {
+  return side / (2 * Math.tan(Math.PI / n));
+}
 
-// ── Generation des tuiles (miroir exact de hexagonify_wasm.ml) ─
+function rayon(n, side) {
+  return side / (2 * Math.sin(Math.PI / n));
+}
+
+function polygonCentre(sommets) {
+  let x = 0;
+  let y = 0;
+  for (const [px, py] of sommets) {
+    x += px;
+    y += py;
+  }
+  return [x / sommets.length, y / sommets.length];
+}
+
+function clePolygone(sommets) {
+  const [cx, cy] = polygonCentre(sommets);
+  return `${sommets.length}:${cx.toFixed(2)}:${cy.toFixed(2)}`;
+}
+
+function boitePolygone(sommets) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of sommets) {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+function visibleDansCadre(sommets, larg, haut) {
+  const box = boitePolygone(sommets);
+  return box.maxX >= 0 && box.maxY >= 0 && box.minX <= larg && box.minY <= haut;
+}
+
+function polygoneRegulier(cx, cy, cote, cotes, rotation = -Math.PI / 2) {
+  const r = rayon(cotes, cote);
+  const points = [];
+  for (let i = 0; i < cotes; i++) {
+    const ang = rotation + (i * TAU) / cotes;
+    points.push([cx + r * Math.cos(ang), cy + r * Math.sin(ang)]);
+  }
+  return points;
+}
+
+function triangleDepuisArete(a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const mx = (a[0] + b[0]) / 2;
+  const my = (a[1] + b[1]) / 2;
+  const len = Math.hypot(dx, dy) || 1;
+  const h = Math.sqrt(3) * len / 2;
+  const nx = -dy / len;
+  const ny = dx / len;
+  return [a, b, [mx + nx * h, my + ny * h]];
+}
 
 function genererTuilesHex(larg, haut, a) {
   const hs = espacement_horiz(a);
   const vs = espacement_vert(a);
-
-  const x_min = -hs,        x_max = larg + hs;
-  const y_min = -2 * a,     y_max = haut + 2 * a;
-
   const tuiles = [];
   let rang = 0;
-  let y = y_min;
-  while (y <= y_max) {
+  for (let y = -2 * a; y <= haut + 2 * a; y += vs) {
     const decalage = (rang % 2) * (hs / 2);
-    let x = x_min + decalage;
-    while (x <= x_max) {
+    for (let x = -hs + decalage; x <= larg + hs; x += hs) {
       const sommets = [];
       for (let i = 0; i < 6; i++) {
         sommets.push([sommet_hex_x(x, y, a, i), sommet_hex_y(x, y, a, i)]);
       }
       tuiles.push(sommets);
-      x += hs;
     }
     rang++;
-    y += vs;
   }
   return tuiles;
 }
@@ -154,17 +189,15 @@ function genererTuilesTriangle(larg, haut, a) {
   const h = hauteur_tri(a);
   const cols = Math.ceil((larg + a * 2) / (a / 2)) + 2;
   const rangs = Math.ceil((haut + h * 2) / h) + 2;
-  const x_debut = -a, y_debut = -h;
   const tuiles = [];
-
   for (let rang = 0; rang < rangs; rang++) {
-    const y = y_debut + rang * h;
+    const y = -h + rang * h;
     for (let col = 0; col < cols; col++) {
-      const x = x_debut + col * (a / 2);
-      const vers_haut = (rang + col) % 2 === 0 ? 1 : 0;
+      const x = -a + col * (a / 2);
+      const versHaut = (rang + col) % 2 === 0 ? 1 : 0;
       const sommets = [];
       for (let i = 0; i < 3; i++) {
-        sommets.push([sommet_tri_x(x, a, i, vers_haut), sommet_tri_y(y, a, i, vers_haut)]);
+        sommets.push([sommet_tri_x(x, a, i, versHaut), sommet_tri_y(y, a, i, versHaut)]);
       }
       tuiles.push(sommets);
     }
@@ -172,14 +205,202 @@ function genererTuilesTriangle(larg, haut, a) {
   return tuiles;
 }
 
-// ── Point dans polygone (algorithme de lancer de rayon) ────────
+function genererDepuisCollection(larg, haut, build) {
+  const tuiles = [];
+  const vus = new Set();
+  const ajouter = (poly) => {
+    if (!visibleDansCadre(poly, larg, haut)) return;
+    const key = clePolygone(poly);
+    if (vus.has(key)) return;
+    vus.add(key);
+    tuiles.push(poly);
+  };
+  build(ajouter);
+  return tuiles;
+}
+
+function genererTrihex(larg, haut, a) {
+  const pasX = 2 * (apothem(6, a) + apothem(3, a));
+  const pasY = Math.sqrt(3) * (apothem(6, a) + apothem(3, a));
+  return genererDepuisCollection(larg, haut, (ajouter) => {
+    let rang = 0;
+    for (let y = -pasY; y <= haut + pasY; y += pasY) {
+      const decal = (rang % 2) * (pasX / 2);
+      for (let x = -pasX + decal; x <= larg + pasX; x += pasX) {
+        const hex = polygoneRegulier(x, y, a, 6, -Math.PI / 2);
+        ajouter(hex);
+        for (let i = 0; i < hex.length; i++) {
+          ajouter(triangleDepuisArete(hex[i], hex[(i + 1) % hex.length]));
+        }
+      }
+      rang++;
+    }
+  });
+}
+
+function genererSnubTrihex(larg, haut, a) {
+  const base = genererTrihex(larg, haut, a * 0.82);
+  const triangles = genererTuilesTriangle(larg, haut, a * 0.72);
+  return base.concat(triangles.filter((poly, index) => index % 3 === 0));
+}
+
+function genererElongatedTriangular(larg, haut, a) {
+  const h = Math.sqrt(3) * a / 2;
+  return genererDepuisCollection(larg, haut, (ajouter) => {
+    for (let y = -h; y <= haut + h; y += a + h) {
+      for (let x = -a; x <= larg + a; x += a) {
+        ajouter([[x, y + h], [x + a, y + h], [x + a, y + h + a], [x, y + h + a]]);
+        ajouter([[x, y + h], [x + a / 2, y], [x + a, y + h]]);
+        ajouter([[x, y + h + a], [x + a / 2, y + h + a + h], [x + a, y + h + a]]);
+      }
+    }
+  });
+}
+
+function genererSnubSquare(larg, haut, a) {
+  const pas = a * (1 + Math.sqrt(3));
+  return genererDepuisCollection(larg, haut, (ajouter) => {
+    for (let y = -pas; y <= haut + pas; y += pas) {
+      for (let x = -pas; x <= larg + pas; x += pas) {
+        const carre = polygoneRegulier(x, y, a, 4, Math.PI / 4);
+        ajouter(carre);
+        for (let i = 0; i < 4; i++) {
+          const p1 = carre[i];
+          const p2 = carre[(i + 1) % 4];
+          ajouter(triangleDepuisArete(p1, p2));
+          const p3 = carre[(i + 2) % 4];
+          ajouter([p2, p3, [(p2[0] + p3[0]) / 2, (p2[1] + p3[1]) / 2 + (i % 2 === 0 ? a * 0.55 : -a * 0.55)]]);
+        }
+      }
+    }
+  });
+}
+
+function genererRhombitrihex(larg, haut, a) {
+  const pasX = 2 * (apothem(6, a) + apothem(4, a));
+  const pasY = Math.sqrt(3) * (apothem(6, a) + apothem(4, a));
+  return genererDepuisCollection(larg, haut, (ajouter) => {
+    let rang = 0;
+    for (let y = -pasY; y <= haut + pasY; y += pasY) {
+      const decal = (rang % 2) * (pasX / 2);
+      for (let x = -pasX + decal; x <= larg + pasX; x += pasX) {
+        const hex = polygoneRegulier(x, y, a, 6, -Math.PI / 2);
+        ajouter(hex);
+        for (let i = 0; i < hex.length; i++) {
+          const a1 = hex[i];
+          const a2 = hex[(i + 1) % hex.length];
+          const mx = (a1[0] + a2[0]) / 2;
+          const my = (a1[1] + a2[1]) / 2;
+          const dx = a2[0] - a1[0];
+          const dy = a2[1] - a1[1];
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len;
+          const ny = dx / len;
+          const cx = mx + nx * apothem(4, a);
+          const cy = my + ny * apothem(4, a);
+          ajouter(polygoneRegulier(cx, cy, a, 4, Math.atan2(dy, dx)));
+          const vx = a2[0] + nx * (apothem(3, a) * 0.9);
+          const vy = a2[1] + ny * (apothem(3, a) * 0.9);
+          ajouter([a1, a2, [vx, vy]]);
+        }
+      }
+      rang++;
+    }
+  });
+}
+
+function genererTruncatedSquare(larg, haut, a) {
+  const pas = 2 * apothem(8, a) + a;
+  return genererDepuisCollection(larg, haut, (ajouter) => {
+    for (let y = -pas; y <= haut + pas; y += pas) {
+      for (let x = -pas; x <= larg + pas; x += pas) {
+        const oct = polygoneRegulier(x, y, a, 8, Math.PI / 8);
+        ajouter(oct);
+        ajouter(polygoneRegulier(x + pas / 2, y, a, 4, Math.PI / 4));
+        ajouter(polygoneRegulier(x, y + pas / 2, a, 4, Math.PI / 4));
+      }
+    }
+  });
+}
+
+function genererGreatRhombitrihex(larg, haut, a) {
+  const pasX = 2 * (apothem(12, a) + apothem(6, a) + apothem(4, a));
+  const pasY = Math.sqrt(3) * (apothem(12, a) + apothem(6, a) + apothem(4, a));
+  return genererDepuisCollection(larg, haut, (ajouter) => {
+    let rang = 0;
+    for (let y = -pasY; y <= haut + pasY; y += pasY) {
+      const decal = (rang % 2) * (pasX / 2);
+      for (let x = -pasX + decal; x <= larg + pasX; x += pasX) {
+        const dodec = polygoneRegulier(x, y, a, 12, Math.PI / 12);
+        ajouter(dodec);
+        for (let i = 0; i < dodec.length; i++) {
+          const p1 = dodec[i];
+          const p2 = dodec[(i + 1) % dodec.length];
+          const mx = (p1[0] + p2[0]) / 2;
+          const my = (p1[1] + p2[1]) / 2;
+          const dx = p2[0] - p1[0];
+          const dy = p2[1] - p1[1];
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len;
+          const ny = dx / len;
+          if (i % 2 === 0) {
+            const cx = mx + nx * apothem(6, a);
+            const cy = my + ny * apothem(6, a);
+            ajouter(polygoneRegulier(cx, cy, a, 6, -Math.PI / 2));
+          } else {
+            const cx = mx + nx * apothem(4, a);
+            const cy = my + ny * apothem(4, a);
+            ajouter(polygoneRegulier(cx, cy, a, 4, Math.atan2(dy, dx)));
+          }
+        }
+      }
+      rang++;
+    }
+  });
+}
+
+function genererTruncatedHex(larg, haut, a) {
+  const pasX = 2 * apothem(12, a);
+  const pasY = Math.sqrt(3) * apothem(12, a);
+  return genererDepuisCollection(larg, haut, (ajouter) => {
+    let rang = 0;
+    for (let y = -pasY; y <= haut + pasY; y += pasY) {
+      const decal = (rang % 2) * (pasX / 2);
+      for (let x = -pasX + decal; x <= larg + pasX; x += pasX) {
+        const dodec = polygoneRegulier(x, y, a, 12, Math.PI / 12);
+        ajouter(dodec);
+        for (let i = 0; i < dodec.length; i += 2) {
+          ajouter(triangleDepuisArete(dodec[i], dodec[(i + 1) % dodec.length]));
+        }
+      }
+      rang++;
+    }
+  });
+}
+
+function genererTuiles(larg, haut, a, methode) {
+  if (methode === "hex") return genererTuilesHex(larg, haut, a);
+  if (methode === "square") return genererTuilesCarres(larg, haut, a);
+  if (methode === "triangle") return genererTuilesTriangle(larg, haut, a);
+  if (methode === "trihex") return genererTrihex(larg, haut, a);
+  if (methode === "snub_trihex") return genererSnubTrihex(larg, haut, a);
+  if (methode === "triangulaire_elongue") return genererElongatedTriangular(larg, haut, a);
+  if (methode === "carre_snub") return genererSnubSquare(larg, haut, a);
+  if (methode === "rhombitrihex") return genererRhombitrihex(larg, haut, a);
+  if (methode === "carre_tronque") return genererTruncatedSquare(larg, haut, a);
+  if (methode === "grand_rhombitrihex") return genererGreatRhombitrihex(larg, haut, a);
+  if (methode === "hex_tronque") return genererTruncatedHex(larg, haut, a);
+  return genererTuilesHex(larg, haut, a);
+}
 
 function pointDansPolygone(px, py, sommets) {
   let dedans = false;
   const n = sommets.length;
   for (let i = 0, j = n - 1; i < n; j = i++) {
-    const xi = sommets[i][0], yi = sommets[i][1];
-    const xj = sommets[j][0], yj = sommets[j][1];
+    const xi = sommets[i][0];
+    const yi = sommets[i][1];
+    const xj = sommets[j][0];
+    const yj = sommets[j][1];
     if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
       dedans = !dedans;
     }
@@ -187,25 +408,18 @@ function pointDansPolygone(px, py, sommets) {
   return dedans;
 }
 
-// ── Couleur moyenne de la tuile ────────────────────────────────
-
 function couleurTuile(pixels, larg, haut, sommets) {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const [vx, vy] of sommets) {
-    if (vx < minX) minX = vx;
-    if (vy < minY) minY = vy;
-    if (vx > maxX) maxX = vx;
-    if (vy > maxY) maxY = vy;
-  }
-
-  const x0 = Math.max(0, Math.floor(minX));
-  const y0 = Math.max(0, Math.floor(minY));
-  const x1 = Math.min(larg, Math.ceil(maxX));
-  const y1 = Math.min(haut, Math.ceil(maxY));
-
+  const box = boitePolygone(sommets);
+  const x0 = Math.max(0, Math.floor(box.minX));
+  const y0 = Math.max(0, Math.floor(box.minY));
+  const x1 = Math.min(larg, Math.ceil(box.maxX));
+  const y1 = Math.min(haut, Math.ceil(box.maxY));
   if (x1 <= x0 || y1 <= y0) return null;
 
-  let rTot = 0, gTot = 0, bTot = 0, compte = 0;
+  let rTot = 0;
+  let gTot = 0;
+  let bTot = 0;
+  let compte = 0;
 
   for (let py = y0; py < y1; py++) {
     for (let px = x0; px < x1; px++) {
@@ -220,16 +434,12 @@ function couleurTuile(pixels, larg, haut, sommets) {
   }
 
   if (compte === 0) return null;
-
-  // couleur_moyenne vient du WASM (hexagonify_wasm.ml : couleur_moyenne)
   return [
     couleur_moyenne(rTot, compte),
     couleur_moyenne(gTot, compte),
     couleur_moyenne(bTot, compte),
   ];
 }
-
-// ── Rendu ──────────────────────────────────────────────────────
 
 function dessinerTuile(ctx, sommets, couleur, largContour, couleurContour) {
   ctx.beginPath();
@@ -255,62 +465,69 @@ function couleurContourCss() {
 }
 
 function dimensionsScalees(imgEl) {
-  let W = imgEl.naturalWidth, H = imgEl.naturalHeight;
-  if (W > MAX_DIM) { H = Math.round(H * MAX_DIM / W); W = MAX_DIM; }
-  if (H > MAX_DIM) { W = Math.round(W * MAX_DIM / H); H = MAX_DIM; }
-  return [W, H];
+  let w = imgEl.naturalWidth;
+  let h = imgEl.naturalHeight;
+  if (w > MAX_DIM) {
+    h = Math.round(h * MAX_DIM / w);
+    w = MAX_DIM;
+  }
+  if (h > MAX_DIM) {
+    w = Math.round(w * MAX_DIM / h);
+    h = MAX_DIM;
+  }
+  return [w, h];
 }
 
 function afficherSource(imgEl) {
   const srcCanvas = document.getElementById("source-canvas");
-  const [W, H] = dimensionsScalees(imgEl);
-  srcCanvas.width = W;
-  srcCanvas.height = H;
-  srcCanvas.getContext("2d").drawImage(imgEl, 0, 0, W, H);
+  const [w, h] = dimensionsScalees(imgEl);
+  srcCanvas.width = w;
+  srcCanvas.height = h;
+  srcCanvas.getContext("2d").drawImage(imgEl, 0, 0, w, h);
 }
 
 async function rendreSortie(imgEl) {
   const srcCanvas = document.getElementById("source-canvas");
   const outCanvas = document.getElementById("output-canvas");
-  const overlay   = document.getElementById("processing-overlay");
-  const btnDl     = document.getElementById("btn-download");
+  const overlay = document.getElementById("processing-overlay");
+  const btnDl = document.getElementById("btn-download");
+  const status = document.getElementById("wasm-status");
+  const token = ++renderToken;
 
   overlay.hidden = false;
   btnDl.disabled = true;
 
-  // Laisser le navigateur peindre l'indicateur de progression
-  await new Promise((r) => setTimeout(r, 20));
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 20));
 
-  const W = srcCanvas.width;
-  const H = srcCanvas.height;
+    const w = srcCanvas.width;
+    const h = srcCanvas.height;
+    const pixelData = srcCanvas.getContext("2d").getImageData(0, 0, w, h).data;
 
-  const pixelData = srcCanvas.getContext("2d").getImageData(0, 0, W, H).data;
+    outCanvas.width = w;
+    outCanvas.height = h;
+    const ctx = outCanvas.getContext("2d");
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, w, h);
 
-  outCanvas.width  = W;
-  outCanvas.height = H;
-  const ctx = outCanvas.getContext("2d");
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(0, 0, W, H);
+    const tuiles = genererTuiles(w, h, state.side, state.method);
+    const cssContour = couleurContourCss();
+    tuiles.sort((a, b) => a.length - b.length);
 
-  const cote      = state.side;
-  const cssContour = couleurContourCss();
+    for (const sommets of tuiles) {
+      const couleur = couleurTuile(pixelData, w, h, sommets);
+      if (couleur) dessinerTuile(ctx, sommets, couleur, state.outlineWidth, cssContour);
+    }
 
-  let tuiles;
-  if (state.method === "hex")      tuiles = genererTuilesHex(W, H, cote);
-  else if (state.method === "square") tuiles = genererTuilesCarres(W, H, cote);
-  else                               tuiles = genererTuilesTriangle(W, H, cote);
-
-  for (const sommets of tuiles) {
-    const couleur = couleurTuile(pixelData, W, H, sommets);
-    if (couleur) dessinerTuile(ctx, sommets, couleur, state.outlineWidth, cssContour);
+    status.textContent = `Rendu termine : ${tuiles.length} tuiles pour le mode ${state.method}.`;
+    btnDl.disabled = false;
+  } catch (err) {
+    console.error("[pixel2polygon] Echec du rendu :", err);
+    status.textContent = `Le rendu a echoue pour le mode ${state.method}.`;
+  } finally {
+    if (token === renderToken) overlay.hidden = true;
   }
-
-  overlay.hidden = false;
-  overlay.hidden = true;
-  btnDl.disabled = false;
 }
-
-// ── Chargement image ───────────────────────────────────────────
 
 function chargerImageDepuisFichier(fichier) {
   if (!fichier || !fichier.type.startsWith("image/")) return;
@@ -336,28 +553,29 @@ function afficherZoneUpload() {
   document.getElementById("canvas-area").hidden = true;
   loadedImage = null;
   document.getElementById("btn-download").disabled = true;
+  document.getElementById("processing-overlay").hidden = true;
 }
-
-// ── Anti-rebond ────────────────────────────────────────────────
 
 function debounce(fn, delai) {
   let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delai); };
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delai);
+  };
 }
 
 const planifierRendu = debounce(() => {
   if (loadedImage && state.autoApply) rendreSortie(loadedImage);
 }, 300);
 
-// ── Liaison des controles ──────────────────────────────────────
-
 function lierControles() {
-  // Forme
-  document.querySelectorAll('input[name="method"]').forEach((input) => {
-    input.addEventListener("change", () => { state.method = input.value; planifierRendu(); });
+  const methodSelect = document.getElementById("method-select");
+  methodSelect.value = state.method;
+  methodSelect.addEventListener("change", () => {
+    state.method = methodSelect.value;
+    planifierRendu();
   });
 
-  // Taille de tuile
   const tileSizeEl = document.getElementById("tile-size");
   const tileSizeDisp = document.getElementById("tile-size-display");
   tileSizeEl.value = String(state.side);
@@ -368,7 +586,6 @@ function lierControles() {
     planifierRendu();
   });
 
-  // Contour — largeur
   const outWEl = document.getElementById("outline-width");
   const outWDisp = document.getElementById("outline-width-display");
   outWEl.value = String(state.outlineWidth);
@@ -379,12 +596,13 @@ function lierControles() {
     planifierRendu();
   });
 
-  // Contour — couleur
   const outCEl = document.getElementById("outline-color");
   outCEl.value = state.outlineColor;
-  outCEl.addEventListener("input", () => { state.outlineColor = outCEl.value; planifierRendu(); });
+  outCEl.addEventListener("input", () => {
+    state.outlineColor = outCEl.value;
+    planifierRendu();
+  });
 
-  // Contour — opacite
   const outOEl = document.getElementById("outline-opacity");
   const outODisp = document.getElementById("outline-opacity-display");
   outOEl.value = String(state.outlineOpacity);
@@ -395,20 +613,18 @@ function lierControles() {
     planifierRendu();
   });
 
-  // Rendu auto
   const autoEl = document.getElementById("auto-apply");
   autoEl.checked = state.autoApply;
-  autoEl.addEventListener("change", () => { state.autoApply = autoEl.checked; });
+  autoEl.addEventListener("change", () => {
+    state.autoApply = autoEl.checked;
+  });
 
-  // Bouton Appliquer
   document.getElementById("btn-apply").addEventListener("click", () => {
     if (loadedImage) rendreSortie(loadedImage);
   });
 
-  // Nouvelle image
   document.getElementById("btn-new-image").addEventListener("click", afficherZoneUpload);
 
-  // Telechargement
   document.getElementById("btn-download").addEventListener("click", () => {
     const canvas = document.getElementById("output-canvas");
     const lien = document.createElement("a");
@@ -417,21 +633,22 @@ function lierControles() {
     lien.click();
   });
 
-  // Entree fichier
   const fileInput = document.getElementById("file-input");
   fileInput.addEventListener("change", () => {
     if (fileInput.files[0]) chargerImageDepuisFichier(fileInput.files[0]);
   });
 
-  // Zone de depot — clic
   const uploadZone = document.getElementById("upload-zone");
   uploadZone.addEventListener("click", (e) => {
     if (e.target.tagName !== "LABEL") fileInput.click();
   });
-
-  // Zone de depot — glisser-deposer
-  uploadZone.addEventListener("dragover",  (e) => { e.preventDefault(); uploadZone.classList.add("dragover"); });
-  uploadZone.addEventListener("dragleave", ()  => { uploadZone.classList.remove("dragover"); });
+  uploadZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    uploadZone.classList.add("dragover");
+  });
+  uploadZone.addEventListener("dragleave", () => {
+    uploadZone.classList.remove("dragover");
+  });
   uploadZone.addEventListener("drop", (e) => {
     e.preventDefault();
     uploadZone.classList.remove("dragover");
@@ -439,36 +656,31 @@ function lierControles() {
     if (fichier) chargerImageDepuisFichier(fichier);
   });
 
-  // Coller depuis le presse-papiers
   document.addEventListener("paste", (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
-      if (item.type.startsWith("image/")) { chargerImageDepuisFichier(item.getAsFile()); break; }
+      if (item.type.startsWith("image/")) {
+        chargerImageDepuisFichier(item.getAsFile());
+        break;
+      }
     }
   });
 }
 
-// ── Onglets ────────────────────────────────────────────────────
-
 function basculerOnglet(nom) {
   const studio = nom === "studio";
   document.getElementById("studio-panel").hidden = !studio;
-  document.getElementById("source-panel").hidden =  studio;
-  document.getElementById("tab-studio").classList.toggle("active",  studio);
+  document.getElementById("source-panel").hidden = studio;
+  document.getElementById("tab-studio").classList.toggle("active", studio);
   document.getElementById("tab-source").classList.toggle("active", !studio);
 }
 
-// ── Initialisation ─────────────────────────────────────────────
-
 async function init() {
-  // Desactiver le bouton Appliquer jusqu'au chargement du WASM
   document.getElementById("btn-apply").disabled = true;
-
   lierControles();
   document.getElementById("tab-studio").addEventListener("click", () => basculerOnglet("studio"));
   document.getElementById("tab-source").addEventListener("click", () => basculerOnglet("source"));
-
   await chargerWasm();
 }
 

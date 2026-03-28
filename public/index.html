@@ -21,7 +21,7 @@
       </div>
       <nav class="tab-nav">
         <button type="button" class="tab active" id="tab-studio">Studio</button>
-        <button type="button" class="tab" id="tab-source">Sources</button>
+        <button type="button" class="tab" id="tab-source">Lien</button>
       </nav>
     </header>
 
@@ -75,11 +75,25 @@
 
           <div class="ctrl-section">
             <p class="ctrl-title">Forme des tuiles</p>
-            <div class="pill-group">
-              <label><input type="radio" name="method" value="hex" checked /> Hexagone</label>
-              <label><input type="radio" name="method" value="square" /> Carr&eacute;</label>
-              <label><input type="radio" name="method" value="triangle" /> Triangle</label>
-            </div>
+            <label class="select-wrap" for="method-select">
+              <select id="method-select" aria-label="Forme des tuiles">
+                <optgroup label="R&eacute;guliers">
+                  <option value="hex" selected>Hexagone</option>
+                  <option value="square">Carr&eacute;</option>
+                  <option value="triangle">Triangle</option>
+                </optgroup>
+                <optgroup label="Semi-r&eacute;guliers">
+                  <option value="trihex">3.6.3.6 &mdash; Hexadeltille</option>
+                  <option value="snub_trihex">3.3.3.3.6 &mdash; Hexadeltille snub</option>
+                  <option value="triangulaire_elongue">3.3.3.4.4 &mdash; Pavage triangulaire allong&eacute;</option>
+                  <option value="carre_snub">3.3.4.3.4 &mdash; Pavage carr&eacute; snub</option>
+                  <option value="rhombitrihex">3.4.6.4 &mdash; Rhombitrihexagonal</option>
+                  <option value="carre_tronque">4.8.8 &mdash; Pavage carr&eacute; tronqu&eacute;</option>
+                  <option value="grand_rhombitrihex">4.6.12 &mdash; Grand rhombitrihexagonal</option>
+                  <option value="hex_tronque">3.12.12 &mdash; Pavage hexagonal tronqu&eacute;</option>
+                </optgroup>
+              </select>
+            </label>
           </div>
 
           <div class="ctrl-section">
@@ -124,12 +138,15 @@
       <!-- ── SOURCES ── -->
       <section id="source-panel" class="source-panel" hidden>
         <div class="source-header">
-          <h2>Sources multilingual fran&ccedil;aises</h2>
+          <h2>Lien vers le d&eacute;p&ocirc;t GitHub</h2>
+          <p>
+            <a href="https://github.com/multilingualprogramming/pixel2polygon" target="_blank"
+              rel="noreferrer">https://github.com/multilingualprogramming/pixel2polygon</a>
+          </p>
           <p>Ces fichiers <code>.ml</code> sont compil&eacute;s en WebAssembly par
             <code>scripts/compile_wasm.ml</code>.
-            Le navigateur utilise exclusivement ce binaire WASM pour calculer la g&eacute;om&eacute;trie
-            des tuiles &mdash; aucun calcul de g&eacute;om&eacute;trie n&rsquo;est effectu&eacute; en
-            JavaScript pur.
+            Le navigateur utilise ce binaire WASM pour les primitives de g&eacute;om&eacute;trie et de
+            couleur, puis compose les tessellations dans l&rsquo;interface.
           </p>
         </div>
 
@@ -239,9 +256,8 @@ multilingual run scripts/compile_wasm.ml</code></pre>
 
       <!-- Barre de statut -->
       <section class="hero">
-        <p>Pixel2Polygon carrelage une image avec des hexagones, carr&eacute;s ou triangles &mdash;
-          g&eacute;om&eacute;trie calcul&eacute;e exclusivement en WASM compil&eacute; depuis des
-          sources multilingual fran&ccedil;aises.</p>
+        <p>Pixel2Polygon carrelage une image avec des polygones r&eacute;guliers et huit
+          tessellations semi-r&eacute;guli&egrave;res.</p>
         <p id="wasm-status" class="hero-note">V&eacute;rification du moteur WASM&hellip;</p>
       </section>
 
