@@ -14,6 +14,11 @@ let wasm = null;
 let loadedImage = null;
 let renderToken = 0;
 
+function afficherOverlay(actif) {
+  const overlay = document.getElementById("processing-overlay");
+  if (overlay) overlay.hidden = !actif;
+}
+
 async function chargerWasm() {
   const status = document.getElementById("wasm-status");
   const btnApply = document.getElementById("btn-apply");
@@ -433,7 +438,12 @@ function couleurTuile(pixels, larg, haut, sommets) {
     }
   }
 
-  if (compte === 0) return null;
+  if (compte === 0) {
+    const cx = Math.min(larg - 1, Math.max(0, Math.round((box.minX + box.maxX) / 2)));
+    const cy = Math.min(haut - 1, Math.max(0, Math.round((box.minY + box.maxY) / 2)));
+    const i = (cy * larg + cx) * 4;
+    return [pixels[i], pixels[i + 1], pixels[i + 2]];
+  }
   return [
     couleur_moyenne(rTot, compte),
     couleur_moyenne(gTot, compte),
@@ -489,12 +499,11 @@ function afficherSource(imgEl) {
 async function rendreSortie(imgEl) {
   const srcCanvas = document.getElementById("source-canvas");
   const outCanvas = document.getElementById("output-canvas");
-  const overlay = document.getElementById("processing-overlay");
   const btnDl = document.getElementById("btn-download");
   const status = document.getElementById("wasm-status");
   const token = ++renderToken;
 
-  overlay.classList.add("actif");
+  afficherOverlay(true);
   btnDl.disabled = true;
 
   try {
@@ -525,7 +534,7 @@ async function rendreSortie(imgEl) {
     console.error("[pixel2polygon] Echec du rendu :", err);
     status.textContent = `Le rendu a echoue pour le mode ${state.method}.`;
   } finally {
-    if (token === renderToken) overlay.classList.remove("actif");
+    if (token === renderToken) afficherOverlay(false);
   }
 }
 
@@ -553,7 +562,7 @@ function afficherZoneUpload() {
   document.getElementById("canvas-area").hidden = true;
   loadedImage = null;
   document.getElementById("btn-download").disabled = true;
-  document.getElementById("processing-overlay").classList.remove("actif");
+  afficherOverlay(false);
 }
 
 function debounce(fn, delai) {
@@ -677,11 +686,26 @@ function basculerOnglet(nom) {
 }
 
 async function init() {
-  document.getElementById("btn-apply").disabled = true;
-  lierControles();
-  document.getElementById("tab-studio").addEventListener("click", () => basculerOnglet("studio"));
-  document.getElementById("tab-source").addEventListener("click", () => basculerOnglet("source"));
-  await chargerWasm();
+  const btnApply = document.getElementById("btn-apply");
+  if (btnApply) btnApply.disabled = true;
+
+  const tabStudio = document.getElementById("tab-studio");
+  const tabSource = document.getElementById("tab-source");
+  if (tabStudio) tabStudio.addEventListener("click", () => basculerOnglet("studio"));
+  if (tabSource) tabSource.addEventListener("click", () => basculerOnglet("source"));
+  basculerOnglet("studio");
+
+  try {
+    lierControles();
+  } catch (err) {
+    console.error("[pixel2polygon] Echec de liaison des controles :", err);
+  }
+
+  try {
+    await chargerWasm();
+  } catch (err) {
+    console.error("[pixel2polygon] Echec d'initialisation WASM :", err);
+  }
 }
 
 init();
