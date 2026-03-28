@@ -16,7 +16,7 @@ let renderToken = 0;
 
 function afficherOverlay(actif) {
   const overlay = document.getElementById("processing-overlay");
-  if (overlay) overlay.hidden = !actif;
+  if (overlay) overlay.classList.toggle("actif", actif);
 }
 
 async function chargerWasm() {
@@ -154,8 +154,8 @@ function triangleDepuisArete(a, b) {
   const my = (a[1] + b[1]) / 2;
   const len = Math.hypot(dx, dy) || 1;
   const h = Math.sqrt(3) * len / 2;
-  const nx = -dy / len;
-  const ny = dx / len;
+  const nx = dy / len;
+  const ny = -dx / len;
   return [a, b, [mx + nx * h, my + ny * h]];
 }
 
@@ -299,8 +299,8 @@ function genererRhombitrihex(larg, haut, a) {
           const dx = a2[0] - a1[0];
           const dy = a2[1] - a1[1];
           const len = Math.hypot(dx, dy) || 1;
-          const nx = -dy / len;
-          const ny = dx / len;
+          const nx = dy / len;
+          const ny = -dx / len;
           const cx = mx + nx * apothem(4, a);
           const cy = my + ny * apothem(4, a);
           ajouter(polygoneRegulier(cx, cy, a, 4, Math.atan2(dy, dx)));
@@ -346,8 +346,8 @@ function genererGreatRhombitrihex(larg, haut, a) {
           const dx = p2[0] - p1[0];
           const dy = p2[1] - p1[1];
           const len = Math.hypot(dx, dy) || 1;
-          const nx = -dy / len;
-          const ny = dx / len;
+          const nx = dy / len;
+          const ny = -dx / len;
           if (i % 2 === 0) {
             const cx = mx + nx * apothem(6, a);
             const cy = my + ny * apothem(6, a);
