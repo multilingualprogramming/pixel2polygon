@@ -99,28 +99,28 @@ jobs:
           WebAssembly.instantiate(module, importObject).then((instance) => {
             const exports = instance.exports;
             const required = [
-              'hex_vertex_x', 'hex_vertex_y',
-              'horiz_spacing', 'vert_spacing',
-              'tri_h', 'tri_vertex_x', 'tri_vertex_y',
-              'color_mean',
-              'method_hex', 'method_square', 'method_triangle',
+              'sommet_hex_x', 'sommet_hex_y',
+              'espacement_horiz', 'espacement_vert',
+              'hauteur_tri', 'sommet_tri_x', 'sommet_tri_y',
+              'couleur_moyenne',
+              'methode_hexagone', 'methode_carre', 'methode_triangle',
             ];
             const missing = required.filter((name) => typeof exports[name] !== 'function');
             if (missing.length) {
               fallback('WASM exports missing.', missing.join(', '));
             }
             const checks = [
-              ['hex_vertex_x', Number(exports.hex_vertex_x(0, 0, 10, 0)), 0, 0.001],
-              ['hex_vertex_y', Number(exports.hex_vertex_y(0, 0, 10, 0)), -10, 0.001],
-              ['horiz_spacing', Number(exports.horiz_spacing(10)), 17.320508, 0.01],
-              ['vert_spacing', Number(exports.vert_spacing(10)), 15, 0.001],
-              ['tri_h', Number(exports.tri_h(10)), 8.660254, 0.01],
-              ['tri_vertex_x', Number(exports.tri_vertex_x(5, 10, 1, 1)), 10, 0.001],
-              ['tri_vertex_y', Number(exports.tri_vertex_y(5, 10, 2, 0)), 13.660254, 0.01],
-              ['color_mean', Number(exports.color_mean(11, 2)), 6, 0.001],
-              ['method_hex', Number(exports.method_hex()), 0, 0.001],
-              ['method_square', Number(exports.method_square()), 1, 0.001],
-              ['method_triangle', Number(exports.method_triangle()), 2, 0.001],
+              ['sommet_hex_x', Number(exports.sommet_hex_x(0, 0, 10, 0)), 0, 0.001],
+              ['sommet_hex_y', Number(exports.sommet_hex_y(0, 0, 10, 0)), -10, 0.001],
+              ['espacement_horiz', Number(exports.espacement_horiz(10)), 17.320508, 0.01],
+              ['espacement_vert', Number(exports.espacement_vert(10)), 15, 0.001],
+              ['hauteur_tri', Number(exports.hauteur_tri(10)), 8.660254, 0.01],
+              ['sommet_tri_x', Number(exports.sommet_tri_x(5, 10, 1, 1)), 10, 0.001],
+              ['sommet_tri_y', Number(exports.sommet_tri_y(5, 10, 2, 0)), 13.660254, 0.01],
+              ['couleur_moyenne', Number(exports.couleur_moyenne(11, 2)), 6, 0.001],
+              ['methode_hexagone', Number(exports.methode_hexagone()), 0, 0.001],
+              ['methode_carre', Number(exports.methode_carre()), 1, 0.001],
+              ['methode_triangle', Number(exports.methode_triangle()), 2, 0.001],
             ];
             for (const [name, actual, expected, tolerance] of checks) {
               if (Math.abs(actual - expected) > tolerance) {
