@@ -113,6 +113,18 @@ Then open `http://localhost:8080` in a browser.
 
 ---
 
+## Smoke tests
+
+Run the lightweight frontend smoke suite with plain Node.js:
+
+```bash
+node tests/smoke.js
+```
+
+The smoke tests validate that the main UI controls are present, the shape selector triggers a render, studio/source tab switching works, and every supported tiling method produces at least one tile.
+
+---
+
 ## Source files
 
 ### `src/hexagonify_wasm.ml` — WASM module

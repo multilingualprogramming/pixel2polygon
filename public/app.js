@@ -252,12 +252,15 @@ function genererSnubTrihex(larg, haut, a) {
 function genererElongatedTriangular(larg, haut, a) {
   const h = Math.sqrt(3) * a / 2;
   return genererDepuisCollection(larg, haut, (ajouter) => {
+    let rang = 0;
     for (let y = -h; y <= haut + h; y += a + h) {
-      for (let x = -a; x <= larg + a; x += a) {
+      const decal = (rang % 2) * (a / 2);
+      for (let x = -a + decal; x <= larg + a; x += a) {
         ajouter([[x, y + h], [x + a, y + h], [x + a, y + h + a], [x, y + h + a]]);
         ajouter([[x, y + h], [x + a / 2, y], [x + a, y + h]]);
         ajouter([[x, y + h + a], [x + a / 2, y + h + a + h], [x + a, y + h + a]]);
       }
+      rang++;
     }
   });
 }
@@ -304,9 +307,7 @@ function genererRhombitrihex(larg, haut, a) {
           const cx = mx + nx * apothem(4, a);
           const cy = my + ny * apothem(4, a);
           ajouter(polygoneRegulier(cx, cy, a, 4, Math.atan2(dy, dx)));
-          const vx = a2[0] + nx * (apothem(3, a) * 0.9);
-          const vy = a2[1] + ny * (apothem(3, a) * 0.9);
-          ajouter([a1, a2, [vx, vy]]);
+          ajouter(triangleDepuisArete(a1, a2));
         }
       }
       rang++;
@@ -321,8 +322,7 @@ function genererTruncatedSquare(larg, haut, a) {
       for (let x = -pas; x <= larg + pas; x += pas) {
         const oct = polygoneRegulier(x, y, a, 8, Math.PI / 8);
         ajouter(oct);
-        ajouter(polygoneRegulier(x + pas / 2, y, a, 4, Math.PI / 4));
-        ajouter(polygoneRegulier(x, y + pas / 2, a, 4, Math.PI / 4));
+        ajouter(polygoneRegulier(x + pas / 2, y + pas / 2, a, 4, Math.PI / 4));
       }
     }
   });
@@ -516,8 +516,7 @@ async function rendreSortie(imgEl) {
     outCanvas.width = w;
     outCanvas.height = h;
     const ctx = outCanvas.getContext("2d");
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(srcCanvas, 0, 0);
 
     const tuiles = genererTuiles(w, h, state.side, state.method);
     const cssContour = couleurContourCss();
@@ -582,7 +581,7 @@ function lierControles() {
   methodSelect.value = state.method;
   methodSelect.addEventListener("change", () => {
     state.method = methodSelect.value;
-    planifierRendu();
+    if (loadedImage) rendreSortie(loadedImage);
   });
 
   const tileSizeEl = document.getElementById("tile-size");
