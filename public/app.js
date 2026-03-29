@@ -679,9 +679,7 @@ function lierControles() {
 function basculerOnglet(nom) {
   const studio = nom === "studio";
   document.getElementById("studio-panel").hidden = !studio;
-  document.getElementById("source-panel").hidden = studio;
   document.getElementById("tab-studio").classList.toggle("active", studio);
-  document.getElementById("tab-source").classList.toggle("active", !studio);
 }
 
 async function init() {
@@ -689,9 +687,7 @@ async function init() {
   if (btnApply) btnApply.disabled = true;
 
   const tabStudio = document.getElementById("tab-studio");
-  const tabSource = document.getElementById("tab-source");
   if (tabStudio) tabStudio.addEventListener("click", () => basculerOnglet("studio"));
-  if (tabSource) tabSource.addEventListener("click", () => basculerOnglet("source"));
   basculerOnglet("studio");
 
   try {

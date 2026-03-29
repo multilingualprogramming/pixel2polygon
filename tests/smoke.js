@@ -98,9 +98,7 @@ function buildHarness() {
     "file-input",
     "upload-zone",
     "studio-panel",
-    "source-panel",
     "tab-studio",
-    "tab-source",
     "processing-overlay",
     "source-canvas",
     "output-canvas",
@@ -177,6 +175,8 @@ function testHtmlSmoke() {
   assert.match(html, /value="trihex"/);
   assert.match(html, /value="hex_tronque"/);
   assert.match(html, /id="btn-apply"/);
+  assert.match(html, /id="tab-github"/);
+  assert.match(html, />GitHub</);
   assert.match(html, /src="app\.js"/);
 }
 
@@ -198,12 +198,10 @@ function testMethodChangeTriggersRender() {
 
 function testTabSwitching() {
   const { elements, api } = buildHarness();
-  api.basculerOnglet("source");
+  api.basculerOnglet("studio");
 
-  assert.strictEqual(elements.get("studio-panel").hidden, true);
-  assert.strictEqual(elements.get("source-panel").hidden, false);
-  assert.strictEqual(elements.get("tab-source").classList.contains("active"), true);
-  assert.strictEqual(elements.get("tab-studio").classList.contains("active"), false);
+  assert.strictEqual(elements.get("studio-panel").hidden, false);
+  assert.strictEqual(elements.get("tab-studio").classList.contains("active"), true);
 }
 
 function testAllMethodsGenerateTiles() {
