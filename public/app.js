@@ -111,7 +111,7 @@ function pointDansPolygone(px, py, sommets) {
   return dedans;
 }
 
-function couleurImageKMeans(pixels, larg, haut, maxSamples = 2000) {
+function couleurImageKMeans(pixels, larg, haut, maxSamples = 96) {
   const total = larg * haut;
   const step = Math.max(1, Math.floor(total / maxSamples));
   km_init(3);

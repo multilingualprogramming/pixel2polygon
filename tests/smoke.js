@@ -161,6 +161,7 @@ function buildHarness() {
 globalThis.__testExports = {
   state,
   METHODES,
+  couleurImageKMeans,
   rendreSortie,
   lierControles,
   basculerOnglet,
@@ -362,11 +363,30 @@ async function testRenderSanitizesTileSizeBeforeWasm() {
   assert.strictEqual(api.state.side, 30);
 }
 
+function testKMeansSamplingStaysUnderWasmLimit() {
+  const { api } = buildHarness();
+  let sampleCount = 0;
+
+  api.setWasm({
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init(k) { assert.strictEqual(k, 3); },
+    km_ajouter() { sampleCount += 1; },
+    km_calculer(maxIter) { assert.strictEqual(maxIter, 20); },
+    km_r() { return 0; },
+    km_g() { return 0; },
+    km_b() { return 0; },
+  });
+
+  api.couleurImageKMeans(new Uint8ClampedArray(640 * 480 * 4), 640, 480);
+  assert.ok(sampleCount <= 100, `expected at most 100 k-means samples, got ${sampleCount}`);
+}
+
 async function run() {
   testHtmlSmoke();
   testMethodChangeTriggersRender();
   testTabSwitching();
   testAllMethodsGenerateTiles();
+  testKMeansSamplingStaysUnderWasmLimit();
   await testFlowerImageProducesTilesInWasm();
   await testRenderSanitizesTileSizeBeforeWasm();
   console.log("Smoke tests passed.");
