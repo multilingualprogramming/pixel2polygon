@@ -6,6 +6,8 @@ const vm = require("vm");
 const ROOT = path.resolve(__dirname, "..");
 const APP_JS = path.join(ROOT, "public", "app.js");
 const INDEX_HTML = path.join(ROOT, "public", "index.html");
+const WASM_PATH = path.join(ROOT, "public", "hexagonify.wasm");
+const FLOWER_JPG = path.join(ROOT, "images", "flower.jpg");
 
 class MockClassList {
   constructor() {
@@ -246,6 +248,78 @@ function testAllMethodsGenerateTiles() {
   }
 }
 
+function readJpegSize(filePath) {
+  const bytes = fs.readFileSync(filePath);
+  assert.ok(bytes.length > 4, "expected a non-empty JPEG file");
+  assert.strictEqual(bytes[0], 0xff, "expected JPEG SOI marker");
+  assert.strictEqual(bytes[1], 0xd8, "expected JPEG SOI marker");
+
+  let offset = 2;
+  while (offset + 9 < bytes.length) {
+    while (offset < bytes.length && bytes[offset] !== 0xff) offset += 1;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) break;
+
+    const marker = bytes[offset];
+    offset += 1;
+    if (marker === 0xd9 || marker === 0xda) break;
+    if (offset + 1 >= bytes.length) break;
+
+    const segmentLength = bytes.readUInt16BE(offset);
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) break;
+
+    const isStartOfFrame =
+      (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf);
+
+    if (isStartOfFrame) {
+      const height = bytes.readUInt16BE(offset + 3);
+      const width = bytes.readUInt16BE(offset + 5);
+      return { width, height };
+    }
+
+    offset += segmentLength;
+  }
+
+  throw new Error(`Could not read JPEG dimensions from ${filePath}`);
+}
+
+async function instantiateProjectWasm() {
+  const bytes = fs.readFileSync(WASM_PATH);
+  const module = await WebAssembly.compile(bytes);
+  const imports = {
+    wasi_snapshot_preview1: {
+      fd_write() { return 0; },
+      fd_read() { return 0; },
+      args_sizes_get() { return 0; },
+      args_get() { return 0; },
+    },
+  };
+  const instance = await WebAssembly.instantiate(module, imports);
+  return instance.exports;
+}
+
+async function testFlowerImageProducesTilesInWasm() {
+  const { width, height } = readJpegSize(FLOWER_JPG);
+  assert.deepStrictEqual({ width, height }, { width: 640, height: 480 });
+
+  const wasm = await instantiateProjectWasm();
+  const side = 120;
+  const methods = [
+    ["hex", 0],
+    ["square", 1],
+  ];
+
+  for (const [name, code] of methods) {
+    const count = Number(wasm.generer_tuiles(width, height, side, code));
+    assert.ok(count > 0, `expected tiles for ${name} on flower.jpg, got ${count}`);
+    const firstTileVertices = Number(wasm.tuile_n_sommets(0));
+    assert.ok(firstTileVertices >= 3, `expected a polygon for ${name}, got ${firstTileVertices}`);
+  }
+}
+
 async function testRenderSanitizesTileSizeBeforeWasm() {
   const { elements, api } = buildHarness();
   const sourceCanvas = elements.get("source-canvas");
@@ -279,6 +353,7 @@ async function run() {
   testMethodChangeTriggersRender();
   testTabSwitching();
   testAllMethodsGenerateTiles();
+  await testFlowerImageProducesTilesInWasm();
   await testRenderSanitizesTileSizeBeforeWasm();
   console.log("Smoke tests passed.");
 }

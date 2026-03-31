@@ -306,38 +306,42 @@ déf _ajouter_poly(xs, ys, larg, haut):
     retour 1
 
 
+déf _nb_pas_inclusifs(debut, fin, pas):
+    si pas <= 0:
+        retour 0
+    retour entier(math.ceil((fin - debut) / pas)) + 1
+
+
 # ── Generateurs de tuiles ─────────────────────────────────────
 
 déf _gen_hex(larg, haut, a):
     hs = espacement_horiz(a)
     vs = espacement_vert(a)
-    rang = 0
-    y = -2.0 * a
-    tantque y <= haut + 2.0 * a:
+    rangs = _nb_pas_inclusifs(-2.0 * a, haut + 2.0 * a, vs)
+    cols = _nb_pas_inclusifs(-hs, larg + hs, hs)
+    pour rang dans range(rangs):
+        y = -2.0 * a + rang * vs
         decal = (rang % 2) * (hs / 2.0)
-        x = -hs + decal
-        tantque x <= larg + hs:
+        pour col dans range(cols):
+            x = -hs + decal + col * hs
             soit xs = [sommet_hex_x(x, y, a, i) pour i dans range(6)]
             soit ys = [sommet_hex_y(x, y, a, i) pour i dans range(6)]
             _ajouter_poly(xs, ys, larg, haut)
-            x = x + hs
-        rang = rang + 1
-        y = y + vs
     retour 0
 
 
 déf _gen_carre(larg, haut, a):
-    x = 0.0
-    tantque x < larg:
-        y = 0.0
-        tantque y < haut:
+    cols = entier(math.ceil(larg / a))
+    rangs = entier(math.ceil(haut / a))
+    pour col dans range(cols):
+        x = col * a
+        pour rang dans range(rangs):
+            y = rang * a
             x2 = min(larg, x + a)
             y2 = min(haut, y + a)
             soit xs = [x, x2, x2, x]
             soit ys = [y, y, y2, y2]
             _ajouter_poly(xs, ys, larg, haut)
-            y = y + a
-        x = x + a
     retour 0
 
 
@@ -361,12 +365,13 @@ déf _gen_triangle(larg, haut, a):
 déf _gen_trihex(larg, haut, a):
     pas_x = 2.0 * (apotheme(6, a) + apotheme(3, a))
     pas_y = math.sqrt(3.0) * (apotheme(6, a) + apotheme(3, a))
-    rang = 0
-    y = -pas_y
-    tantque y <= haut + pas_y:
+    rangs = _nb_pas_inclusifs(-pas_y, haut + pas_y, pas_y)
+    cols = _nb_pas_inclusifs(-pas_x, larg + pas_x, pas_x)
+    pour rang dans range(rangs):
+        y = -pas_y + rang * pas_y
         decal = (rang % 2) * (pas_x / 2.0)
-        x = -pas_x + decal
-        tantque x <= larg + pas_x:
+        pour col dans range(cols):
+            x = -pas_x + decal + col * pas_x
             soit hxs = [polygone_x(x, y, a, 6, -math.pi / 2.0, i) pour i dans range(6)]
             soit hys = [polygone_y(x, y, a, 6, -math.pi / 2.0, i) pour i dans range(6)]
             _ajouter_poly(hxs, hys, larg, haut)
@@ -377,9 +382,6 @@ déf _gen_trihex(larg, haut, a):
                 soit txs = [hxs[i], hxs[i2], t3x]
                 soit tys = [hys[i], hys[i2], t3y]
                 _ajouter_poly(txs, tys, larg, haut)
-            x = x + pas_x
-        rang = rang + 1
-        y = y + pas_y
     retour 0
 
 
