@@ -319,19 +319,29 @@ async function rendreSortie() {
 
     const code = entierSecurise(METHODES[state.method], METHODES.hex, 0);
     let cote = entierSecurise(state.side, 30, 1);
+    const coteDemande = cote;
     const coteMin = coteSuretePourImage(w, h, state.method);
-    if (cote < coteMin) {
-      cote = coteMin;
+    if (cote < coteMin) cote = coteMin;
+    let nTuiles;
+    for (let tentative = 0; tentative < 6; tentative++) {
+      try {
+        nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
+        break;
+      } catch (err) {
+        if (tentative >= 5) throw err;
+        cote = Math.ceil(cote * 1.5);
+      }
+    }
+    if (cote !== coteDemande) {
+      status.textContent = `Taille ajustee a ${cote}px (limite memoire WASM).`;
+    }
+    if (cote !== state.side) {
       state.side = cote;
       const tileSizeEl = document.getElementById("tile-size");
       if (tileSizeEl) tileSizeEl.value = String(cote);
       const tileSizeDisp = document.getElementById("tile-size-display");
       if (tileSizeDisp) tileSizeDisp.textContent = String(cote);
-      status.textContent = `Taille ajustee a ${cote}px (limite memoire WASM).`;
-    } else if (cote !== state.side) {
-      state.side = cote;
     }
-    const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
     if (!Number.isInteger(nTuiles) || nTuiles < 0) {
       throw new Error(`Nombre de tuiles invalide renvoye par WASM: ${nTuiles}`);
     }
