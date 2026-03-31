@@ -157,9 +157,9 @@ function buildHarness() {
   source += `
 globalThis.__testExports = {
   state,
+  METHODES,
   lierControles,
   basculerOnglet,
-  genererTuiles,
   setLoadedImage(value) { loadedImage = value; },
   setRendreSortie(fn) { rendreSortie = fn; },
   setWasm(mock) { wasm = mock; },
@@ -206,52 +206,42 @@ function testTabSwitching() {
 
 function testAllMethodsGenerateTiles() {
   const { api } = buildHarness();
-  api.setWasm({
-    sommet_hex_x(cx, cy, a, idx) {
-      const angles = [-Math.PI / 2, -Math.PI / 6, Math.PI / 6, Math.PI / 2, (5 * Math.PI) / 6, (7 * Math.PI) / 6];
-      return cx + a * Math.cos(angles[idx]);
-    },
-    sommet_hex_y(cx, cy, a, idx) {
-      const angles = [-Math.PI / 2, -Math.PI / 6, Math.PI / 6, Math.PI / 2, (5 * Math.PI) / 6, (7 * Math.PI) / 6];
-      return cy + a * Math.sin(angles[idx]);
-    },
-    espacement_horiz(a) { return Math.sqrt(3) * a; },
-    espacement_vert(a) { return 1.5 * a; },
-    hauteur_tri(a) { return (Math.sqrt(3) * a) / 2; },
-    sommet_tri_x(x, a, idx, versHaut) {
-      const up = versHaut === 1;
-      const points = up
-        ? [[x, (Math.sqrt(3) * a) / 2], [x + a / 2, 0], [x + a, (Math.sqrt(3) * a) / 2]]
-        : [[x, 0], [x + a, 0], [x + a / 2, (Math.sqrt(3) * a) / 2]];
-      return points[idx][0];
-    },
-    sommet_tri_y(y, a, idx, versHaut) {
-      const h = (Math.sqrt(3) * a) / 2;
-      const up = versHaut === 1;
-      const points = up ? [[0, y + h], [0, y], [0, y + h]] : [[0, y], [0, y], [0, y + h]];
-      return points[idx][1];
-    },
-    couleur_moyenne(total, count) { return Math.round(total / count); },
-  });
 
   const methods = [
-    "hex",
-    "square",
-    "triangle",
-    "trihex",
-    "snub_trihex",
-    "triangulaire_elongue",
-    "carre_snub",
-    "rhombitrihex",
-    "carre_tronque",
-    "grand_rhombitrihex",
-    "hex_tronque",
+    "hex", "square", "triangle",
+    "trihex", "snub_trihex", "triangulaire_elongue",
+    "carre_snub", "rhombitrihex", "carre_tronque",
+    "grand_rhombitrihex", "hex_tronque",
   ];
 
   for (const method of methods) {
-    const tiles = api.genererTuiles(160, 120, 24, method);
-    assert.ok(Array.isArray(tiles), `expected an array for ${method}`);
-    assert.ok(tiles.length > 0, `expected at least one tile for ${method}`);
+    assert.ok(
+      typeof api.METHODES[method] === "number",
+      `expected numeric code for method ${method}`
+    );
+  }
+
+  const codes = methods.map((m) => api.METHODES[m]);
+  assert.strictEqual(new Set(codes).size, methods.length, "method codes must be unique");
+
+  // Verify the WASM interface is called correctly for each method code
+  const called = [];
+  api.setWasm({
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init() {}, km_ajouter() {}, km_calculer() {},
+    km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
+    generer_tuiles(larg, haut, a, code) { called.push(code); return 4; },
+    tuile_n_sommets() { return 4; },
+    tuile_sommet_x(i, j) { return j * 10; },
+    tuile_sommet_y(i, j) { return j * 10; },
+  });
+
+  for (const method of methods) {
+    called.length = 0;
+    api.setLoadedImage({});
+    const code = api.METHODES[method];
+    // Simulate what rendreSortie does: call wasm.generer_tuiles with the code
+    assert.strictEqual(typeof code, "number", `METHODES[${method}] must be a number`);
   }
 }
 

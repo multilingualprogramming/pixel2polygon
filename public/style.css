@@ -369,13 +369,20 @@ button.accent-btn:hover:not(:disabled) {
 
 .select-wrap select {
   width: 100%;
-  background: rgba(0, 0, 0, 0.24);
+  background: var(--surface-strong);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
+  color-scheme: dark;
   font-family: inherit;
   font-size: 0.9rem;
   padding: 10px 12px;
+}
+
+.select-wrap select option,
+.select-wrap select optgroup {
+  background: #0d1e2d;
+  color: var(--text);
 }
 
 .ctrl-title {
