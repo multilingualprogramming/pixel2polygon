@@ -34,6 +34,20 @@ let wasm = null;
 let loadedImage = null;
 let renderToken = 0;
 
+function urlWasmVersionnee() {
+  try {
+    if (typeof document.querySelector !== "function") return "hexagonify.wasm";
+    const scriptCourant = document.querySelector('script[src*="app.js"]');
+    if (!scriptCourant?.src) return "hexagonify.wasm";
+    const urlScript = new URL(scriptCourant.src, window.location.href);
+    const urlWasm = new URL("hexagonify.wasm", urlScript);
+    if (urlScript.search) urlWasm.search = urlScript.search;
+    return urlWasm.toString();
+  } catch (err) {
+    return "hexagonify.wasm";
+  }
+}
+
 function afficherOverlay(actif) {
   const overlay = document.getElementById("processing-overlay");
   if (overlay) overlay.classList.toggle("actif", actif);
@@ -43,7 +57,7 @@ async function chargerWasm() {
   const status = document.getElementById("wasm-status");
   const btnApply = document.getElementById("btn-apply");
   try {
-    const response = await fetch("hexagonify.wasm");
+    const response = await fetch(urlWasmVersionnee());
     if (!response.ok) throw new Error(`Fichier WASM indisponible (${response.status}).`);
     const bytes = await response.arrayBuffer();
     if (bytes.byteLength < 8) throw new Error("Fichier WASM vide ou tronque.");
