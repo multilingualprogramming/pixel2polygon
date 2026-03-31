@@ -424,7 +424,7 @@ function testKMeansFallsBackToMeanWhenWasmThrows() {
     10, 20, 30, 255,
     30, 40, 50, 255,
   ]);
-  assert.deepStrictEqual(api.couleurImageKMeans(pixels, 2, 1, 96), [20, 30, 40]);
+  assert.deepStrictEqual(Array.from(api.couleurImageKMeans(pixels, 2, 1, 96)), [20, 30, 40]);
 }
 
 async function run() {
