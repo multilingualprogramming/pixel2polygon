@@ -16,6 +16,20 @@ const METHODES = {
   grand_rhombitrihex: 9, hex_tronque: 10,
 };
 
+const EXPORTS_CODES_METHODES = {
+  hex: "methode_hexagone",
+  square: "methode_carre",
+  triangle: "methode_triangle",
+  trihex: "methode_trihex",
+  snub_trihex: "methode_snub_trihex",
+  triangulaire_elongue: "methode_triangulaire_elongue",
+  carre_snub: "methode_carre_snub",
+  rhombitrihex: "methode_rhombitrihex",
+  carre_tronque: "methode_carre_tronque",
+  grand_rhombitrihex: "methode_grand_rhombitrihex",
+  hex_tronque: "methode_hex_tronque",
+};
+
 let wasm = null;
 let loadedImage = null;
 let renderToken = 0;
@@ -43,6 +57,7 @@ async function chargerWasm() {
     }
 
     wasm = instance.exports;
+    synchroniserCodesMethodes(wasm);
     status.textContent = "Moteur WASM charge.";
     btnApply.disabled = false;
     document.getElementById("upload-zone").style.pointerEvents = "auto";
@@ -87,6 +102,14 @@ function km_init(k) { wasm.km_init(k); }
 function km_ajouter(r, g, b) { wasm.km_ajouter(r, g, b); }
 function km_calculer(maxIter) { wasm.km_calculer(maxIter); }
 function km_resultat() { return [Number(wasm.km_r()), Number(wasm.km_g()), Number(wasm.km_b())]; }
+
+function synchroniserCodesMethodes(exports) {
+  for (const [nom, exportNom] of Object.entries(EXPORTS_CODES_METHODES)) {
+    if (typeof exports[exportNom] !== "function") continue;
+    const code = Number(exports[exportNom]());
+    if (Number.isInteger(code) && code >= 0) METHODES[nom] = code;
+  }
+}
 
 function boitePolygone(sommets) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -178,6 +201,28 @@ function dimensionsScalees(imgEl) {
   return [w, h];
 }
 
+function lireSommetsTuile(ti) {
+  const n = Number(wasm.tuile_n_sommets(ti));
+  if (!Number.isInteger(n) || n < 3 || n > 64) return null;
+  const sommets = [];
+  for (let j = 0; j < n; j++) {
+    const x = Number(wasm.tuile_sommet_x(ti, j));
+    const y = Number(wasm.tuile_sommet_y(ti, j));
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    sommets.push([x, y]);
+  }
+  return sommets;
+}
+
+function lireNombreSommetsTuile(ti) {
+  try {
+    const n = Number(wasm.tuile_n_sommets(ti));
+    return Number.isInteger(n) && n >= 0 ? n : Number.MAX_SAFE_INTEGER;
+  } catch (err) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
 function entierSecurise(valeur, secours, minimum = null, maximum = null) {
   let n = Number.isFinite(valeur) ? Math.trunc(valeur) : Math.trunc(Number(valeur));
   if (!Number.isFinite(n)) n = secours;
@@ -218,24 +263,38 @@ async function rendreSortie() {
     ctx.fillStyle = `rgb(${bgCouleur[0]},${bgCouleur[1]},${bgCouleur[2]})`;
     ctx.fillRect(0, 0, w, h);
 
-    const code = entierSecurise(METHODES[state.method], 0, 0);
+    const code = entierSecurise(METHODES[state.method], METHODES.hex, 0);
     const cote = entierSecurise(state.side, 30, 1);
     if (cote !== state.side) state.side = cote;
     const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
+    if (!Number.isInteger(nTuiles) || nTuiles < 0) {
+      throw new Error(`Nombre de tuiles invalide renvoye par WASM: ${nTuiles}`);
+    }
     const indices = Array.from({ length: nTuiles }, (_, i) => i);
-    indices.sort((a, b) => Number(wasm.tuile_n_sommets(a)) - Number(wasm.tuile_n_sommets(b)));
+    indices.sort((a, b) => lireNombreSommetsTuile(a) - lireNombreSommetsTuile(b));
 
     const cssContour = couleurContourCss();
+    let tuilesInvalides = 0;
     for (const ti of indices) {
-      const n = Number(wasm.tuile_n_sommets(ti));
-      const sommets = [];
-      for (let j = 0; j < n; j++)
-        sommets.push([Number(wasm.tuile_sommet_x(ti, j)), Number(wasm.tuile_sommet_y(ti, j))]);
+      let sommets = null;
+      try {
+        sommets = lireSommetsTuile(ti);
+      } catch (err) {
+        tuilesInvalides++;
+        console.warn(`[pixel2polygon] Tuile ${ti} ignoree :`, err);
+        continue;
+      }
+      if (!sommets) {
+        tuilesInvalides++;
+        continue;
+      }
       const couleur = couleurTuile(pixelData, w, h, sommets);
       if (couleur) dessinerTuile(ctx, sommets, couleur, state.outlineWidth, cssContour);
     }
 
-    status.textContent = `Rendu termine : ${nTuiles} tuiles pour le mode ${state.method}.`;
+    status.textContent = tuilesInvalides > 0
+      ? `Rendu termine : ${nTuiles - tuilesInvalides}/${nTuiles} tuiles valides pour le mode ${state.method}.`
+      : `Rendu termine : ${nTuiles} tuiles pour le mode ${state.method}.`;
     btnDl.disabled = false;
   } catch (err) {
     console.error("[pixel2polygon] Echec du rendu :", err);

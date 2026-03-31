@@ -363,6 +363,33 @@ async function testRenderSanitizesTileSizeBeforeWasm() {
   assert.strictEqual(api.state.side, 30);
 }
 
+async function testRenderSkipsInvalidTilesWithoutCrashing() {
+  const { elements, api } = buildHarness();
+  const sourceCanvas = elements.get("source-canvas");
+  const status = elements.get("wasm-status");
+  const download = elements.get("btn-download");
+  sourceCanvas.width = 10;
+  sourceCanvas.height = 10;
+
+  api.state.method = "hex";
+  api.setWasm({
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init() {}, km_ajouter() {}, km_calculer() {},
+    km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
+    generer_tuiles() { return 2; },
+    tuile_n_sommets(i) {
+      if (i === 0) return 4;
+      throw new Error("index out of bounds");
+    },
+    tuile_sommet_x(i, j) { return [0, 10, 10, 0][j]; },
+    tuile_sommet_y(i, j) { return [0, 0, 10, 10][j]; },
+  });
+
+  await api.rendreSortie();
+  assert.match(status.textContent, /1\/2 tuiles valides/);
+  assert.strictEqual(download.disabled, false);
+}
+
 function testKMeansSamplingStaysUnderWasmLimit() {
   const { api } = buildHarness();
   let sampleCount = 0;
@@ -389,6 +416,7 @@ async function run() {
   testKMeansSamplingStaysUnderWasmLimit();
   await testFlowerImageProducesTilesInWasm();
   await testRenderSanitizesTileSizeBeforeWasm();
+  await testRenderSkipsInvalidTilesWithoutCrashing();
   console.log("Smoke tests passed.");
 }
 
