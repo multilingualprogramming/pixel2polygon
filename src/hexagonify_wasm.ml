@@ -264,6 +264,8 @@ déf _ajouter_poly(xs, ys, larg, haut):
     global _tuiles_xs, _tuiles_ys, _tuiles_off, _tuiles_n
     global _vus_n, _vus_cx, _vus_cy
     n = len(xs)
+    si n == 0:
+        retour 0
     min_x = xs[0]
     max_x = xs[0]
     min_y = ys[0]
@@ -284,8 +286,12 @@ déf _ajouter_poly(xs, ys, larg, haut):
     pour i dans range(n):
         sx = sx + xs[i]
         sy = sy + ys[i]
-    cx = entier(sx / n * 100.0) / 100.0
-    cy = entier(sy / n * 100.0) / 100.0
+    cx = sx / n
+    cy = sy / n
+    si cx != cx ou cy != cy:
+        retour 0
+    cx = entier(cx * 100.0) / 100.0
+    cy = entier(cy * 100.0) / 100.0
     pour k dans range(len(_vus_n)):
         si _vus_n[k] == n et _vus_cx[k] == cx et _vus_cy[k] == cy:
             retour 0
@@ -586,6 +592,10 @@ déf _gen_hex_tronque(larg, haut, a):
 
 déf generer_tuiles(larg, haut, a, methode):
     _tuiles_reinit()
+    si larg != larg ou haut != haut ou a != a ou methode != methode:
+        retour 0
+    si a <= 0:
+        retour 0
     m = entier(methode)
     si m == 0:
         _gen_hex(larg, haut, a)
