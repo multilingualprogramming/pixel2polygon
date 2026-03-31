@@ -178,6 +178,14 @@ function dimensionsScalees(imgEl) {
   return [w, h];
 }
 
+function entierSecurise(valeur, secours, minimum = null, maximum = null) {
+  let n = Number.isFinite(valeur) ? Math.trunc(valeur) : Math.trunc(Number(valeur));
+  if (!Number.isFinite(n)) n = secours;
+  if (minimum !== null) n = Math.max(minimum, n);
+  if (maximum !== null) n = Math.min(maximum, n);
+  return n;
+}
+
 function afficherSource(imgEl) {
   const srcCanvas = document.getElementById("source-canvas");
   const [w, h] = dimensionsScalees(imgEl);
@@ -199,8 +207,8 @@ async function rendreSortie() {
   try {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const w = srcCanvas.width;
-    const h = srcCanvas.height;
+    const w = entierSecurise(srcCanvas.width, 0, 1);
+    const h = entierSecurise(srcCanvas.height, 0, 1);
     const pixelData = srcCanvas.getContext("2d").getImageData(0, 0, w, h).data;
 
     outCanvas.width = w;
@@ -210,8 +218,10 @@ async function rendreSortie() {
     ctx.fillStyle = `rgb(${bgCouleur[0]},${bgCouleur[1]},${bgCouleur[2]})`;
     ctx.fillRect(0, 0, w, h);
 
-    const code = METHODES[state.method] ?? 0;
-    const nTuiles = Number(wasm.generer_tuiles(w, h, state.side, code));
+    const code = entierSecurise(METHODES[state.method], 0, 0);
+    const cote = entierSecurise(state.side, 30, 1);
+    if (cote !== state.side) state.side = cote;
+    const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
     const indices = Array.from({ length: nTuiles }, (_, i) => i);
     indices.sort((a, b) => Number(wasm.tuile_n_sommets(a)) - Number(wasm.tuile_n_sommets(b)));
 
@@ -284,7 +294,7 @@ function lierControles() {
   tileSizeEl.value = String(state.side);
   tileSizeDisp.textContent = String(state.side);
   tileSizeEl.addEventListener("input", () => {
-    state.side = parseInt(tileSizeEl.value, 10);
+    state.side = entierSecurise(tileSizeEl.value, 30, 1);
     tileSizeDisp.textContent = String(state.side);
     planifierRendu();
   });
@@ -294,7 +304,7 @@ function lierControles() {
   outWEl.value = String(state.outlineWidth);
   outWDisp.textContent = String(state.outlineWidth);
   outWEl.addEventListener("input", () => {
-    state.outlineWidth = parseInt(outWEl.value, 10);
+    state.outlineWidth = entierSecurise(outWEl.value, 0, 0);
     outWDisp.textContent = String(state.outlineWidth);
     planifierRendu();
   });
@@ -308,7 +318,7 @@ function lierControles() {
   outOEl.value = String(state.outlineOpacity);
   outODisp.textContent = String(state.outlineOpacity);
   outOEl.addEventListener("input", () => {
-    state.outlineOpacity = parseInt(outOEl.value, 10);
+    state.outlineOpacity = entierSecurise(outOEl.value, 47, 0, 100);
     outODisp.textContent = String(state.outlineOpacity);
     planifierRendu();
   });

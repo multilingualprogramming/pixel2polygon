@@ -158,6 +158,7 @@ function buildHarness() {
 globalThis.__testExports = {
   state,
   METHODES,
+  rendreSortie,
   lierControles,
   basculerOnglet,
   setLoadedImage(value) { loadedImage = value; },
@@ -245,12 +246,44 @@ function testAllMethodsGenerateTiles() {
   }
 }
 
-function run() {
+async function testRenderSanitizesTileSizeBeforeWasm() {
+  const { elements, api } = buildHarness();
+  const sourceCanvas = elements.get("source-canvas");
+  sourceCanvas.width = 10;
+  sourceCanvas.height = 10;
+
+  api.state.side = "abc";
+  api.state.method = "trihex";
+  api.setWasm({
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init() {}, km_ajouter() {}, km_calculer() {},
+    km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
+    generer_tuiles(larg, haut, a, code) {
+      assert.strictEqual(larg, 10);
+      assert.strictEqual(haut, 10);
+      assert.strictEqual(a, 30);
+      assert.strictEqual(code, api.METHODES.trihex);
+      return 1;
+    },
+    tuile_n_sommets() { return 4; },
+    tuile_sommet_x(i, j) { return [0, 10, 10, 0][j]; },
+    tuile_sommet_y(i, j) { return [0, 0, 10, 10][j]; },
+  });
+
+  await api.rendreSortie();
+  assert.strictEqual(api.state.side, 30);
+}
+
+async function run() {
   testHtmlSmoke();
   testMethodChangeTriggersRender();
   testTabSwitching();
   testAllMethodsGenerateTiles();
+  await testRenderSanitizesTileSizeBeforeWasm();
   console.log("Smoke tests passed.");
 }
 
-run();
+run().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});
