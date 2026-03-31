@@ -21,9 +21,8 @@
       </div>
       <nav class="tab-nav">
         <button type="button" class="tab active" id="tab-studio">Studio</button>
-        <a class="tab tab-link" id="tab-github"
-          href="https://github.com/multilingualprogramming/pixel2polygon" target="_blank"
-          rel="noreferrer">GitHub</a>
+        <a class="tab tab-link" id="tab-github" href="https://github.com/multilingualprogramming/pixel2polygon"
+          target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
     </header>
 
@@ -111,8 +110,7 @@
             <p class="ctrl-title">Contour</p>
             <div class="ctrl-row">
               <label class="muted" for="outline-width">Largeur</label>
-              <input type="range" id="outline-width" min="0" max="6" step="1" value="0"
-                aria-label="Largeur contour" />
+              <input type="range" id="outline-width" min="0" max="6" step="1" value="0" aria-label="Largeur contour" />
               <span id="outline-width-display" class="value-badge">0</span>
               <span class="muted">px</span>
             </div>
@@ -143,7 +141,7 @@
           <h2>Lien vers le d&eacute;p&ocirc;t GitHub</h2>
           <p>
             <a href="https://github.com/multilingualprogramming/pixel2polygon" target="_blank"
-              rel="noreferrer">https://github.com/multilingualprogramming/pixel2polygon</a>
+              rel="noopener noreferrer">https://github.com/multilingualprogramming/pixel2polygon</a>
           </p>
           <p>Ces fichiers <code>.ml</code> sont compil&eacute;s en WebAssembly par
             <code>scripts/compile_wasm.ml</code>.
@@ -163,7 +161,8 @@
                 <h4><span class="filename-pill">src/hexagonify_wasm.ml</span></h4>
                 <p>Module WASM minimal &mdash; calcul des sommets d&rsquo;hexagones et de triangles
                   &eacute;quilat&eacute;raux, espacements, couleur moyenne. Compil&eacute; vers
-                  <code>public/hexagonify.wasm</code>.</p>
+                  <code>public/hexagonify.wasm</code>.
+                </p>
               </article>
 
               <article class="source-card source-card-file">
@@ -171,13 +170,15 @@
                 <p>Source canonique compl&egrave;te &mdash; g&eacute;om&eacute;trie int&eacute;grale,
                   mode <strong>kmeans</strong> via
                   <code>MiniBatchKMeans</code> (scikit-learn), masques PIL/NumPy, et
-                  ex&eacute;cution autonome en ligne de commande.</p>
+                  ex&eacute;cution autonome en ligne de commande.
+                </p>
               </article>
 
               <article class="source-card source-card-file">
                 <h4><span class="filename-pill">src/main.ml</span></h4>
                 <p>Point d&rsquo;entr&eacute;e du bundle.
-                  <code>importer hexagonify_wasm</code></p>
+                  <code>importer hexagonify_wasm</code>
+                </p>
               </article>
 
               <article class="source-card source-card-file">
@@ -185,7 +186,8 @@
                 <p>Script de compilation — lit les sources multilingual, g&eacute;n&egrave;re le WAT via
                   <code>WATCodeGenerator</code> puis le binaire WASM avec
                   <code>wasmtime.wat2wasm</code>. Enti&egrave;rement &eacute;crit en multilingual
-                  fran&ccedil;ais.</p>
+                  fran&ccedil;ais.
+                </p>
               </article>
 
             </div>
@@ -204,7 +206,8 @@
                 </h4>
                 <p>Coordonn&eacute;es du sommet <em>idx</em> (0&ndash;5) d&rsquo;un hexagone
                   &agrave; sommet pointu centr&eacute; en <em>(cx, cy)</em> de c&ocirc;t&eacute;
-                  <em>a</em>.</p>
+                  <em>a</em>.
+                </p>
               </article>
 
               <article class="source-card source-card-export">
@@ -265,7 +268,7 @@ multilingual run scripts/compile_wasm.ml</code></pre>
 
     </main>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=2026-03-31-3"></script>
   </body>
 
 </html>
