@@ -1,4 +1,19 @@
 const MAX_DIM = 1200;
+const MAX_TUILES_WASM = 8000;
+
+// Approximate tile density (tiles per unit area / cote^2) for each tiling method.
+// Used to estimate the minimum safe cote before calling generer_tuiles.
+const DENSITE_METHODE = {
+  hex: 0.40, square: 1.0, triangle: 2.35,
+  trihex: 2.70, snub_trihex: 4.2, triangulaire_elongue: 1.65,
+  carre_snub: 1.25, rhombitrihex: 2.05, carre_tronque: 0.28,
+  grand_rhombitrihex: 0.38, hex_tronque: 0.60,
+};
+
+function coteSuretePourImage(w, h, methode) {
+  const densite = DENSITE_METHODE[methode] ?? 2.0;
+  return Math.max(1, Math.ceil(Math.sqrt(densite * w * h / MAX_TUILES_WASM)));
+}
 
 const state = {
   method: "hex",
@@ -303,8 +318,19 @@ async function rendreSortie() {
     ctx.fillRect(0, 0, w, h);
 
     const code = entierSecurise(METHODES[state.method], METHODES.hex, 0);
-    const cote = entierSecurise(state.side, 30, 1);
-    if (cote !== state.side) state.side = cote;
+    let cote = entierSecurise(state.side, 30, 1);
+    const coteMin = coteSuretePourImage(w, h, state.method);
+    if (cote < coteMin) {
+      cote = coteMin;
+      state.side = cote;
+      const tileSizeEl = document.getElementById("tile-size");
+      if (tileSizeEl) tileSizeEl.value = String(cote);
+      const tileSizeDisp = document.getElementById("tile-size-display");
+      if (tileSizeDisp) tileSizeDisp.textContent = String(cote);
+      status.textContent = `Taille ajustee a ${cote}px (limite memoire WASM).`;
+    } else if (cote !== state.side) {
+      state.side = cote;
+    }
     const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
     if (!Number.isInteger(nTuiles) || nTuiles < 0) {
       throw new Error(`Nombre de tuiles invalide renvoye par WASM: ${nTuiles}`);
