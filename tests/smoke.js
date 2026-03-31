@@ -1,4 +1,5 @@
 const assert = require("assert");
+const childProcess = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -286,7 +287,20 @@ function readJpegSize(filePath) {
   throw new Error(`Could not read JPEG dimensions from ${filePath}`);
 }
 
+function ensureProjectWasm() {
+  if (fs.existsSync(WASM_PATH)) return;
+
+  childProcess.execFileSync(
+    "python",
+    ["-m", "multilingualprogramming", "scripts/compile_wasm.ml"],
+    { cwd: ROOT, stdio: "pipe" }
+  );
+
+  assert.ok(fs.existsSync(WASM_PATH), "expected compile_wasm.ml to generate public/hexagonify.wasm");
+}
+
 async function instantiateProjectWasm() {
+  ensureProjectWasm();
   const bytes = fs.readFileSync(WASM_PATH);
   const module = await WebAssembly.compile(bytes);
   const imports = {
