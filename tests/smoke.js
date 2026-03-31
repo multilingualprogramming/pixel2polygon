@@ -182,7 +182,7 @@ function testHtmlSmoke() {
   assert.match(html, /id="btn-apply"/);
   assert.match(html, /id="tab-github"/);
   assert.match(html, />GitHub</);
-  assert.match(html, /src="app\.js"/);
+  assert.match(html, /src="app\.js(?:\?[^"]+)?"\s*><\/script>/);
 }
 
 function testMethodChangeTriggersRender() {
@@ -408,12 +408,32 @@ function testKMeansSamplingStaysUnderWasmLimit() {
   assert.ok(sampleCount <= 100, `expected at most 100 k-means samples, got ${sampleCount}`);
 }
 
+function testKMeansFallsBackToMeanWhenWasmThrows() {
+  const { api } = buildHarness();
+  api.setWasm({
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init() { throw new Error("index out of bounds"); },
+    km_ajouter() {},
+    km_calculer() {},
+    km_r() { return 0; },
+    km_g() { return 0; },
+    km_b() { return 0; },
+  });
+
+  const pixels = new Uint8ClampedArray([
+    10, 20, 30, 255,
+    30, 40, 50, 255,
+  ]);
+  assert.deepStrictEqual(api.couleurImageKMeans(pixels, 2, 1, 96), [20, 30, 40]);
+}
+
 async function run() {
   testHtmlSmoke();
   testMethodChangeTriggersRender();
   testTabSwitching();
   testAllMethodsGenerateTiles();
   testKMeansSamplingStaysUnderWasmLimit();
+  testKMeansFallsBackToMeanWhenWasmThrows();
   await testFlowerImageProducesTilesInWasm();
   await testRenderSanitizesTileSizeBeforeWasm();
   await testRenderSkipsInvalidTilesWithoutCrashing();

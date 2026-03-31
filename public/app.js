@@ -148,16 +148,41 @@ function pointDansPolygone(px, py, sommets) {
   return dedans;
 }
 
-function couleurImageKMeans(pixels, larg, haut, maxSamples = 96) {
+function couleurImageMoyenne(pixels, larg, haut, maxSamples = 96) {
   const total = larg * haut;
+  if (total <= 0) return [0, 0, 0];
   const step = Math.max(1, Math.floor(total / maxSamples));
-  km_init(3);
+  let rTot = 0, gTot = 0, bTot = 0, compte = 0;
   for (let i = 0; i < total; i += step) {
     const idx = i * 4;
-    km_ajouter(pixels[idx], pixels[idx + 1], pixels[idx + 2]);
+    rTot += pixels[idx];
+    gTot += pixels[idx + 1];
+    bTot += pixels[idx + 2];
+    compte++;
   }
-  km_calculer(20);
-  return km_resultat();
+  if (compte === 0) return [0, 0, 0];
+  return [
+    couleur_moyenne(rTot, compte),
+    couleur_moyenne(gTot, compte),
+    couleur_moyenne(bTot, compte),
+  ];
+}
+
+function couleurImageKMeans(pixels, larg, haut, maxSamples = 96) {
+  try {
+    const total = larg * haut;
+    const step = Math.max(1, Math.floor(total / maxSamples));
+    km_init(3);
+    for (let i = 0; i < total; i += step) {
+      const idx = i * 4;
+      km_ajouter(pixels[idx], pixels[idx + 1], pixels[idx + 2]);
+    }
+    km_calculer(20);
+    return km_resultat();
+  } catch (err) {
+    console.warn("[pixel2polygon] K-means indisponible, repli sur la moyenne :", err);
+    return couleurImageMoyenne(pixels, larg, haut, maxSamples);
+  }
 }
 
 function couleurTuile(pixels, larg, haut, sommets) {

@@ -177,9 +177,11 @@ déf km_calculer(max_iter):
     si n == 0:
         retour 0
     k = min(_km_k, n)
-    soit c_r = [_km_r[entier(i * n / k)] pour i dans range(k)]
-    soit c_g = [_km_g[entier(i * n / k)] pour i dans range(k)]
-    soit c_b = [_km_b[entier(i * n / k)] pour i dans range(k)]
+    si k <= 0:
+        retour 0
+    soit c_r = [_km_r[min(n - 1, i * n // k)] pour i dans range(k)]
+    soit c_g = [_km_g[min(n - 1, i * n // k)] pour i dans range(k)]
+    soit c_b = [_km_b[min(n - 1, i * n // k)] pour i dans range(k)]
     soit labels = [0 pour _ dans range(n)]
     pour _ dans range(entier(max_iter)):
         soit change = 0
@@ -194,8 +196,6 @@ déf km_calculer(max_iter):
             si labels[i] != best:
                 labels[i] = best
                 change = 1
-        si change == 0:
-            retour 0
         pour c dans range(k):
             soit sr = 0.0
             soit sg = 0.0
