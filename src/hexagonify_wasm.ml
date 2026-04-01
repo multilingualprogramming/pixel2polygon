@@ -3,13 +3,6 @@ importer math
 # Module WASM-compatible pour le carrelage d'images.
 # Exporte les primitives geometriques et les generateurs de tuiles
 # utilises par l'interface JavaScript.
-#
-# Stockage pre-alloue : evite append() (O(N²) memoire avec allocateur
-# par bosse) en faveur d'indices dans des tableaux de taille fixe.
-
-_MAX_TUILES     = 2000
-_MAX_COORDS     = 24000   # 2000 tuiles × 12 sommets au plus
-_MAX_KM_SAMPLES = 96
 
 
 # ── Hexagone (sommet pointu en haut) ──────────────────────────
@@ -141,21 +134,21 @@ déf tri_arete_y3(x1, y1, x2, y2):
 
 
 # ── K-means (couleur representative) ─────────────────────────
-# Tableaux pre-alloues : pas d'append(), pas de croissance quadratique.
 
-_km_r = [0.0 pour _ dans range(_MAX_KM_SAMPLES)]
-_km_g = [0.0 pour _ dans range(_MAX_KM_SAMPLES)]
-_km_b = [0.0 pour _ dans range(_MAX_KM_SAMPLES)]
+_km_r = []
+_km_g = []
+_km_b = []
 _km_k = 3
-_km_n = 0
 _km_res_r = 0
 _km_res_g = 0
 _km_res_b = 0
 
 
 déf km_init(k):
-    global _km_n, _km_k, _km_res_r, _km_res_g, _km_res_b
-    _km_n = 0
+    global _km_r, _km_g, _km_b, _km_k, _km_res_r, _km_res_g, _km_res_b
+    _km_r = []
+    _km_g = []
+    _km_b = []
     _km_k = entier(k)
     _km_res_r = 0
     _km_res_g = 0
@@ -164,13 +157,10 @@ déf km_init(k):
 
 
 déf km_ajouter(r, g, b):
-    global _km_r, _km_g, _km_b, _km_n
-    si _km_n >= _MAX_KM_SAMPLES:
-        retour 0
-    _km_r[_km_n] = r
-    _km_g[_km_n] = g
-    _km_b[_km_n] = b
-    _km_n = _km_n + 1
+    global _km_r, _km_g, _km_b
+    _km_r.append(r)
+    _km_g.append(g)
+    _km_b.append(b)
     retour 0
 
 
@@ -182,8 +172,8 @@ déf _dist2(r1, g1, b1, r2, g2, b2):
 
 
 déf km_calculer(max_iter):
-    global _km_res_r, _km_res_g, _km_res_b, _km_k, _km_r, _km_g, _km_b, _km_n
-    n = _km_n
+    global _km_res_r, _km_res_g, _km_res_b, _km_k, _km_r, _km_g, _km_b
+    n = len(_km_r)
     si n == 0:
         retour 0
     k = min(_km_k, n)
@@ -247,31 +237,32 @@ déf km_b():
 
 
 # ── Stockage global des tuiles ────────────────────────────────
-# Tableaux pre-alloues une seule fois au chargement du module.
-# _tuiles_reinit() remet seulement les compteurs a zero : aucune
-# allocation supplementaire par rendu, memoire en O(1).
 
-_tuiles_xs  = [0.0 pour _ dans range(_MAX_COORDS)]
-_tuiles_ys  = [0.0 pour _ dans range(_MAX_COORDS)]
-_tuiles_off = [0.0 pour _ dans range(_MAX_TUILES)]
-_tuiles_n   = [0.0 pour _ dans range(_MAX_TUILES)]
-_vus_n      = [0.0 pour _ dans range(_MAX_TUILES)]
-_vus_cx     = [0.0 pour _ dans range(_MAX_TUILES)]
-_vus_cy     = [0.0 pour _ dans range(_MAX_TUILES)]
-_nb_tuiles  = 0
-_nb_coords  = 0
+_tuiles_xs = []
+_tuiles_ys = []
+_tuiles_off = []
+_tuiles_n = []
+_vus_n = []
+_vus_cx = []
+_vus_cy = []
 
 
 déf _tuiles_reinit():
-    global _nb_tuiles, _nb_coords
-    _nb_tuiles = 0
-    _nb_coords = 0
+    global _tuiles_xs, _tuiles_ys, _tuiles_off, _tuiles_n
+    global _vus_n, _vus_cx, _vus_cy
+    _tuiles_xs = []
+    _tuiles_ys = []
+    _tuiles_off = []
+    _tuiles_n = []
+    _vus_n = []
+    _vus_cx = []
+    _vus_cy = []
     retour 0
 
 
 déf _ajouter_poly(xs, ys, larg, haut):
     global _tuiles_xs, _tuiles_ys, _tuiles_off, _tuiles_n
-    global _vus_n, _vus_cx, _vus_cy, _nb_tuiles, _nb_coords
+    global _vus_n, _vus_cx, _vus_cy
     n = len(xs)
     si n == 0:
         retour 0
@@ -301,21 +292,17 @@ déf _ajouter_poly(xs, ys, larg, haut):
         retour 0
     cx = entier(cx * 100.0) / 100.0
     cy = entier(cy * 100.0) / 100.0
-    pour k dans range(_nb_tuiles):
+    pour k dans range(len(_vus_n)):
         si _vus_n[k] == n et _vus_cx[k] == cx et _vus_cy[k] == cy:
             retour 0
-    si _nb_tuiles >= _MAX_TUILES ou _nb_coords + n > _MAX_COORDS:
-        retour 0
-    _vus_n[_nb_tuiles]      = n
-    _vus_cx[_nb_tuiles]     = cx
-    _vus_cy[_nb_tuiles]     = cy
-    _tuiles_off[_nb_tuiles] = _nb_coords
-    _tuiles_n[_nb_tuiles]   = n
+    _vus_n.append(n)
+    _vus_cx.append(cx)
+    _vus_cy.append(cy)
+    _tuiles_off.append(len(_tuiles_xs))
+    _tuiles_n.append(n)
     pour i dans range(n):
-        _tuiles_xs[_nb_coords + i] = xs[i]
-        _tuiles_ys[_nb_coords + i] = ys[i]
-    _nb_tuiles = _nb_tuiles + 1
-    _nb_coords = _nb_coords + n
+        _tuiles_xs.append(xs[i])
+        _tuiles_ys.append(ys[i])
     retour 1
 
 
@@ -634,7 +621,7 @@ déf generer_tuiles(larg, haut, a, methode):
         _gen_grand_rhombitrihex(larg, haut, a)
     si m == 10:
         _gen_hex_tronque(larg, haut, a)
-    retour _nb_tuiles
+    retour len(_tuiles_off)
 
 
 déf tuile_n_sommets(i):
