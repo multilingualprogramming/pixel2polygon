@@ -663,14 +663,22 @@ def _gen_carre(larg, haut, a):
 
 def _gen_triangle(larg, haut, a):
     h = hauteur_tri(a)
-    cols = entier(math.ceil((larg + a * 2.0) / a)) + 2
-    rangs = entier(math.ceil((haut + h * 2.0) / (2.0 * h))) + 2
+    cols = entier(math.ceil((larg + a * 2.0) / (a / 2.0))) + 2
+    rangs = entier(math.ceil((haut + h * 2.0) / h)) + 2
     pour rang dans range(rangs):
-        y = -h + rang * (2.0 * h)
+        y = -h + rang * h
         pour col dans range(cols):
-            x = -a + col * a
-            _ajouter_tuile_3_direct(x, y + h, x + a / 2.0, y, x + a, y + h, larg, haut)
-            _ajouter_tuile_3_direct(x, y + h, x + a, y + h, x + a / 2.0, y + 2.0 * h, larg, haut)
+            x = -a + col * (a / 2.0)
+            vers_haut = 1
+            si (rang + col) % 2 != 0:
+                vers_haut = 0
+            soit x0 = sommet_tri_x(x, a, 0, vers_haut)
+            soit y0 = sommet_tri_y(y, a, 0, vers_haut)
+            soit x1 = sommet_tri_x(x, a, 1, vers_haut)
+            soit y1 = sommet_tri_y(y, a, 1, vers_haut)
+            soit x2 = sommet_tri_x(x, a, 2, vers_haut)
+            soit y2 = sommet_tri_y(y, a, 2, vers_haut)
+            _ajouter_tuile_3_direct(x0, y0, x1, y1, x2, y2, larg, haut)
     retour 0
 
 
