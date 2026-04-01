@@ -253,6 +253,45 @@ def tri_arete_y3(x1, y1, x2, y2):
     retour (y1 + y2) / 2.0 + ny * h
 
 
+def _ajouter_carre_depuis_arete(p1x, p1y, p2x, p2y, larg, haut):
+    soit dx = p2x - p1x
+    soit dy = p2y - p1y
+    soit lon = math.sqrt(dx * dx + dy * dy)
+    si lon == 0:
+        retour 0
+    nx = dy / lon
+    ny = -dx / lon
+    soit q2x = p2x + nx * lon
+    soit q2y = p2y + ny * lon
+    soit q3x = p1x + nx * lon
+    soit q3y = p1y + ny * lon
+    _ajouter_tuile_4_direct(p1x, p1y, p2x, p2y, q2x, q2y, q3x, q3y, larg, haut)
+    retour 0
+
+
+def _ajouter_hex_depuis_arete(p1x, p1y, p2x, p2y, larg, haut):
+    soit dx = p2x - p1x
+    soit dy = p2y - p1y
+    soit lon = math.sqrt(dx * dx + dy * dy)
+    si lon == 0:
+        retour 0
+    tx = dx / lon
+    ty = dy / lon
+    nx = dy / lon
+    ny = -dx / lon
+    s3 = math.sqrt(3.0)
+    soit h2x = p2x + lon * (tx / 2.0 + nx * (s3 / 2.0))
+    soit h2y = p2y + lon * (ty / 2.0 + ny * (s3 / 2.0))
+    soit h3x = p2x + lon * (nx * s3)
+    soit h3y = p2y + lon * (ny * s3)
+    soit h4x = p1x + lon * (nx * s3)
+    soit h4y = p1y + lon * (ny * s3)
+    soit h5x = p1x + lon * (-tx / 2.0 + nx * (s3 / 2.0))
+    soit h5y = p1y + lon * (-ty / 2.0 + ny * (s3 / 2.0))
+    _ajouter_tuile_6_direct(p1x, p1y, p2x, p2y, h2x, h2y, h3x, h3y, h4x, h4y, h5x, h5y, larg, haut)
+    retour 0
+
+
 # ── Etat global des tuiles ────────────────────────────────────
 
 _methode_active = 0
@@ -636,8 +675,8 @@ def _gen_triangle(larg, haut, a):
 
 
 def _gen_trihex(larg, haut, a):
-    pas_x = 2.0 * (apotheme(6, a) + apotheme(3, a))
-    pas_y = math.sqrt(3.0) * (apotheme(6, a) + apotheme(3, a))
+    pas_x = 2.0 * math.sqrt(3.0) * a
+    pas_y = 3.0 * a
     rangs = _nb_pas_inclusifs(-pas_y, haut + pas_y, pas_y)
     cols = _nb_pas_inclusifs(-pas_x, larg + pas_x, pas_x)
     pour rang dans range(rangs):
@@ -680,28 +719,49 @@ def _gen_trihex(larg, haut, a):
 
 
 def _gen_snub_trihex(larg, haut, a):
-    _gen_trihex(larg, haut, a * 0.82)
-    at = a * 0.72
-    h = hauteur_tri(at)
-    cols = entier(math.ceil((larg + at * 2.0) / (at / 2.0))) + 2
-    rangs = entier(math.ceil((haut + h * 2.0) / h)) + 2
-    cnt = 0
+    pas_x = 2.0 * math.sqrt(3.0) * a
+    pas_y = 3.0 * a
+    at = a * 0.78
+    rangs = _nb_pas_inclusifs(-pas_y, haut + pas_y, pas_y)
+    cols = _nb_pas_inclusifs(-pas_x, larg + pas_x, pas_x)
     pour rang dans range(rangs):
-        y = -h + rang * h
+        y = -pas_y + rang * pas_y
+        decal = (rang % 2) * (pas_x / 2.0)
         pour col dans range(cols):
-            si cnt % 3 == 0:
-                x = -at + col * (at / 2.0)
-                vers_haut = 1
-                si (rang + col) % 2 != 0:
-                    vers_haut = 0
-                soit x0 = sommet_tri_x(x, at, 0, vers_haut)
-                soit y0 = sommet_tri_y(y, at, 0, vers_haut)
-                soit x1 = sommet_tri_x(x, at, 1, vers_haut)
-                soit y1 = sommet_tri_y(y, at, 1, vers_haut)
-                soit x2 = sommet_tri_x(x, at, 2, vers_haut)
-                soit y2 = sommet_tri_y(y, at, 2, vers_haut)
-                _ajouter_tuile_3_direct(x0, y0, x1, y1, x2, y2, larg, haut)
-            cnt = cnt + 1
+            x = -pas_x + decal + col * pas_x
+            soit hx0 = sommet_hex_x(x, y, a, 0)
+            soit hy0 = sommet_hex_y(x, y, a, 0)
+            soit hx1 = sommet_hex_x(x, y, a, 1)
+            soit hy1 = sommet_hex_y(x, y, a, 1)
+            soit hx2 = sommet_hex_x(x, y, a, 2)
+            soit hy2 = sommet_hex_y(x, y, a, 2)
+            soit hx3 = sommet_hex_x(x, y, a, 3)
+            soit hy3 = sommet_hex_y(x, y, a, 3)
+            soit hx4 = sommet_hex_x(x, y, a, 4)
+            soit hy4 = sommet_hex_y(x, y, a, 4)
+            soit hx5 = sommet_hex_x(x, y, a, 5)
+            soit hy5 = sommet_hex_y(x, y, a, 5)
+            _ajouter_tuile_6_direct(hx0, hy0, hx1, hy1, hx2, hy2, hx3, hy3, hx4, hy4, hx5, hy5, larg, haut)
+            pour i dans range(6):
+                pprevx = sommet_hex_x(x, y, a, (i + 5) % 6)
+                pprevy = sommet_hex_y(x, y, a, (i + 5) % 6)
+                pvx = sommet_hex_x(x, y, a, i)
+                pvy = sommet_hex_y(x, y, a, i)
+                pnxtx = sommet_hex_x(x, y, a, (i + 1) % 6)
+                pnxty = sommet_hex_y(x, y, a, (i + 1) % 6)
+                dx1 = pvx - pprevx
+                dy1 = pvy - pprevy
+                dx2 = pnxtx - pvx
+                dy2 = pnxty - pvy
+                lon1 = math.sqrt(dx1 * dx1 + dy1 * dy1)
+                lon2 = math.sqrt(dx2 * dx2 + dy2 * dy2)
+                si lon1 == 0 ou lon2 == 0:
+                    continuer
+                n1x = dy1 / lon1
+                n1y = -dx1 / lon1
+                n2x = dy2 / lon2
+                n2y = -dx2 / lon2
+                _ajouter_tuile_3_direct(pvx, pvy, pvx + n1x * at, pvy + n1y * at, pvx + n2x * at, pvy + n2y * at, larg, haut)
     retour 0
 
 
@@ -737,35 +797,23 @@ def _gen_carre_snub(larg, haut, a):
             soit ta0x = tri_arete_x3(x0, y0, x1, y1)
             soit ta0y = tri_arete_y3(x0, y0, x1, y1)
             _ajouter_tuile_3_direct(x0, y0, x1, y1, ta0x, ta0y, larg, haut)
-            soit m0x = (x1 + x2) / 2.0
-            soit m0y = (y1 + y2) / 2.0 + a * 0.55
-            _ajouter_tuile_3_direct(x1, y1, x2, y2, m0x, m0y, larg, haut)
             soit ta1x = tri_arete_x3(x1, y1, x2, y2)
             soit ta1y = tri_arete_y3(x1, y1, x2, y2)
             _ajouter_tuile_3_direct(x1, y1, x2, y2, ta1x, ta1y, larg, haut)
-            soit m1x = (x2 + x3) / 2.0
-            soit m1y = (y2 + y3) / 2.0 - a * 0.55
-            _ajouter_tuile_3_direct(x2, y2, x3, y3, m1x, m1y, larg, haut)
             soit ta2x = tri_arete_x3(x2, y2, x3, y3)
             soit ta2y = tri_arete_y3(x2, y2, x3, y3)
             _ajouter_tuile_3_direct(x2, y2, x3, y3, ta2x, ta2y, larg, haut)
-            soit m2x = (x3 + x0) / 2.0
-            soit m2y = (y3 + y0) / 2.0 + a * 0.55
-            _ajouter_tuile_3_direct(x3, y3, x0, y0, m2x, m2y, larg, haut)
             soit ta3x = tri_arete_x3(x3, y3, x0, y0)
             soit ta3y = tri_arete_y3(x3, y3, x0, y0)
             _ajouter_tuile_3_direct(x3, y3, x0, y0, ta3x, ta3y, larg, haut)
-            soit m3x = (x0 + x1) / 2.0
-            soit m3y = (y0 + y1) / 2.0 - a * 0.55
-            _ajouter_tuile_3_direct(x0, y0, x1, y1, m3x, m3y, larg, haut)
             x = x + pas
         y = y + pas
     retour 0
 
 
 def _gen_rhombitrihex(larg, haut, a):
-    pas_x = 2.0 * (apotheme(6, a) + apotheme(4, a))
-    pas_y = math.sqrt(3.0) * (apotheme(6, a) + apotheme(4, a))
+    pas_x = a * (2.0 + math.sqrt(3.0))
+    pas_y = a * (1.5 + math.sqrt(3.0))
     rang = 0
     y = -pas_y
     tantque y <= haut + pas_y:
@@ -820,25 +868,62 @@ def _gen_rhombitrihex(larg, haut, a):
                 lon = math.sqrt(dx * dx + dy * dy)
                 si lon == 0:
                     continuer
-                nx = -dy / lon
-                ny = dx / lon
-                apo4 = apotheme(4, a)
-                ccx = (p1x + p2x) / 2.0 + nx * apo4
-                ccy = (p1y + p2y) / 2.0 + ny * apo4
-                tx = dx / lon
-                ty = dy / lon
-                demi = a / 2.0
-                soit q0x = ccx + (tx + nx) * demi
-                soit q0y = ccy + (ty + ny) * demi
-                soit q1x = ccx + (-tx + nx) * demi
-                soit q1y = ccy + (-ty + ny) * demi
-                soit q2x = ccx + (-tx - nx) * demi
-                soit q2y = ccy + (-ty - ny) * demi
-                soit q3x = ccx + (tx - nx) * demi
-                soit q3y = ccy + (ty - ny) * demi
-                _ajouter_tuile_4_direct(q0x, q0y, q1x, q1y, q2x, q2y, q3x, q3y, larg, haut)
-                apo3 = apotheme(3, a)
-                _ajouter_tuile_3_direct(p1x, p1y, p2x, p2y, (p1x + p2x) / 2.0 + nx * apo3, (p1y + p2y) / 2.0 + ny * apo3, larg, haut)
+                _ajouter_carre_depuis_arete(p1x, p1y, p2x, p2y, larg, haut)
+            pour i dans range(6):
+                vx = h0x
+                vy = h0y
+                ppx = h5x
+                ppy = h5y
+                pnx = h1x
+                pny = h1y
+                si i == 1:
+                    vx = h1x
+                    vy = h1y
+                    ppx = h0x
+                    ppy = h0y
+                    pnx = h2x
+                    pny = h2y
+                si i == 2:
+                    vx = h2x
+                    vy = h2y
+                    ppx = h1x
+                    ppy = h1y
+                    pnx = h3x
+                    pny = h3y
+                si i == 3:
+                    vx = h3x
+                    vy = h3y
+                    ppx = h2x
+                    ppy = h2y
+                    pnx = h4x
+                    pny = h4y
+                si i == 4:
+                    vx = h4x
+                    vy = h4y
+                    ppx = h3x
+                    ppy = h3y
+                    pnx = h5x
+                    pny = h5y
+                si i == 5:
+                    vx = h5x
+                    vy = h5y
+                    ppx = h4x
+                    ppy = h4y
+                    pnx = h0x
+                    pny = h0y
+                dx1 = vx - ppx
+                dy1 = vy - ppy
+                dx2 = pnx - vx
+                dy2 = pny - vy
+                lon1 = math.sqrt(dx1 * dx1 + dy1 * dy1)
+                lon2 = math.sqrt(dx2 * dx2 + dy2 * dy2)
+                si lon1 == 0 ou lon2 == 0:
+                    continuer
+                n1x = dy1 / lon1
+                n1y = -dx1 / lon1
+                n2x = dy2 / lon2
+                n2y = -dx2 / lon2
+                _ajouter_tuile_3_direct(vx, vy, vx + n1x * a, vy + n1y * a, vx + n2x * a, vy + n2y * a, larg, haut)
             x = x + pas_x
         rang = rang + 1
         y = y + pas_y
@@ -892,11 +977,8 @@ def _gen_carre_tronque(larg, haut, a):
 
 
 def _gen_grand_rhombitrihex(larg, haut, a):
-    apo12 = apotheme(12, a)
-    apo6 = apotheme(6, a)
-    apo4 = apotheme(4, a)
-    pas_x = 2.0 * (apo12 + apo6 + apo4)
-    pas_y = math.sqrt(3.0) * (apo12 + apo6 + apo4)
+    pas_x = a * (5.0 + math.sqrt(3.0))
+    pas_y = a * (4.1 + math.sqrt(3.0))
     rang = 0
     y = -pas_y
     tantque y <= haut + pas_y:
@@ -993,41 +1075,10 @@ def _gen_grand_rhombitrihex(larg, haut, a):
                 lon = math.sqrt(dx * dx + dy * dy)
                 si lon == 0:
                     continuer
-                nx = -dy / lon
-                ny = dx / lon
-                mx = (p1x + p2x) / 2.0
-                my = (p1y + p2y) / 2.0
                 si i % 2 == 0:
-                    soit hx = mx + nx * apo6
-                    soit hy = my + ny * apo6
-                    soit h0x = sommet_hex_x(hx, hy, a, 0)
-                    soit h0y = sommet_hex_y(hx, hy, a, 0)
-                    soit h1x = sommet_hex_x(hx, hy, a, 1)
-                    soit h1y = sommet_hex_y(hx, hy, a, 1)
-                    soit h2x = sommet_hex_x(hx, hy, a, 2)
-                    soit h2y = sommet_hex_y(hx, hy, a, 2)
-                    soit h3x = sommet_hex_x(hx, hy, a, 3)
-                    soit h3y = sommet_hex_y(hx, hy, a, 3)
-                    soit h4x = sommet_hex_x(hx, hy, a, 4)
-                    soit h4y = sommet_hex_y(hx, hy, a, 4)
-                    soit h5x = sommet_hex_x(hx, hy, a, 5)
-                    soit h5y = sommet_hex_y(hx, hy, a, 5)
-                    _ajouter_tuile_6_direct(h0x, h0y, h1x, h1y, h2x, h2y, h3x, h3y, h4x, h4y, h5x, h5y, larg, haut)
+                    _ajouter_hex_depuis_arete(p1x, p1y, p2x, p2y, larg, haut)
                 sinon:
-                    ccx = mx + nx * apo4
-                    ccy = my + ny * apo4
-                    tx = dx / lon
-                    ty = dy / lon
-                    demi = a / 2.0
-                    soit q0x = ccx + (tx + nx) * demi
-                    soit q0y = ccy + (ty + ny) * demi
-                    soit q1x = ccx + (-tx + nx) * demi
-                    soit q1y = ccy + (-ty + ny) * demi
-                    soit q2x = ccx + (-tx - nx) * demi
-                    soit q2y = ccy + (-ty - ny) * demi
-                    soit q3x = ccx + (tx - nx) * demi
-                    soit q3y = ccy + (ty - ny) * demi
-                    _ajouter_tuile_4_direct(q0x, q0y, q1x, q1y, q2x, q2y, q3x, q3y, larg, haut)
+                    _ajouter_carre_depuis_arete(p1x, p1y, p2x, p2y, larg, haut)
             x = x + pas_x
         rang = rang + 1
         y = y + pas_y
