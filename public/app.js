@@ -163,6 +163,11 @@ function pointDansPolygone(px, py, sommets) {
   return dedans;
 }
 
+function pasEchantillonnageTuile(largeur, hauteur, maxSamples = 144) {
+  const aireBoite = Math.max(1, largeur * hauteur);
+  return Math.max(1, Math.floor(Math.sqrt(aireBoite / maxSamples)));
+}
+
 function couleurImageMoyenne(pixels, larg, haut, maxSamples = 96) {
   const total = larg * haut;
   if (total <= 0) return [0, 0, 0];
@@ -207,11 +212,17 @@ function couleurTuile(pixels, larg, haut, sommets) {
   const x1 = Math.min(larg, Math.ceil(box.maxX));
   const y1 = Math.min(haut, Math.ceil(box.maxY));
   if (x1 <= x0 || y1 <= y0) return null;
+  const pas = pasEchantillonnageTuile(x1 - x0, y1 - y0);
+  const demiPas = pas / 2;
   let rTot = 0, gTot = 0, bTot = 0, compte = 0;
-  for (let py = y0; py < y1; py++) {
-    for (let px = x0; px < x1; px++) {
-      if (pointDansPolygone(px + 0.5, py + 0.5, sommets)) {
-        const i = (py * larg + px) * 4;
+  for (let py = y0; py < y1; py += pas) {
+    for (let px = x0; px < x1; px += pas) {
+      const sx = Math.min(x1 - 0.5, px + demiPas);
+      const sy = Math.min(y1 - 0.5, py + demiPas);
+      if (pointDansPolygone(sx, sy, sommets)) {
+        const ix = Math.min(larg - 1, Math.max(0, Math.floor(sx)));
+        const iy = Math.min(haut - 1, Math.max(0, Math.floor(sy)));
+        const i = (iy * larg + ix) * 4;
         rTot += pixels[i]; gTot += pixels[i + 1]; bTot += pixels[i + 2];
         compte++;
       }
