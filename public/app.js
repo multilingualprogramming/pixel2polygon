@@ -120,6 +120,9 @@ function validerExports(exports) {
     "couleur_moyenne",
     "km_init", "km_ajouter", "km_calculer", "km_r", "km_g", "km_b",
     "generer_tuiles", "tuile_n_sommets", "tuile_sommet_x", "tuile_sommet_y",
+    "tuile_centre_x", "tuile_centre_y",
+    "tuile_boite_min_x", "tuile_boite_max_x", "tuile_boite_min_y", "tuile_boite_max_y",
+    "tuile_contient_point",
   ];
   for (const nom of requis) {
     if (typeof exports[nom] !== "function") return false;
@@ -141,27 +144,29 @@ function synchroniserCodesMethodes(exports) {
   }
 }
 
-function boitePolygone(sommets) {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const [x, y] of sommets) {
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
-  }
-  return { minX, minY, maxX, maxY };
+function boiteTuile(ti) {
+  return {
+    minX: Number(wasm.tuile_boite_min_x(ti)),
+    maxX: Number(wasm.tuile_boite_max_x(ti)),
+    minY: Number(wasm.tuile_boite_min_y(ti)),
+    maxY: Number(wasm.tuile_boite_max_y(ti)),
+  };
 }
 
-function pointDansPolygone(px, py, sommets) {
-  let dedans = false;
-  const n = sommets.length;
-  for (let i = 0, j = n - 1; i < n; j = i++) {
-    const xi = sommets[i][0], yi = sommets[i][1];
-    const xj = sommets[j][0], yj = sommets[j][1];
-    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)
-      dedans = !dedans;
+function lirePixel(pixels, larg, haut, x, y) {
+  const ix = Math.min(larg - 1, Math.max(0, Math.floor(x)));
+  const iy = Math.min(haut - 1, Math.max(0, Math.floor(y)));
+  const i = (iy * larg + ix) * 4;
+  return [pixels[i], pixels[i + 1], pixels[i + 2]];
+}
+
+function couleurTuileSecours(pixels, larg, haut, ti, box) {
+  const sx = Number(wasm.tuile_centre_x(ti));
+  const sy = Number(wasm.tuile_centre_y(ti));
+  if (Number.isFinite(sx) && Number.isFinite(sy) && sx >= 0 && sy >= 0 && sx < larg && sy < haut) {
+    return lirePixel(pixels, larg, haut, sx, sy);
   }
-  return dedans;
+  return lirePixel(pixels, larg, haut, (box.minX + box.maxX) / 2, (box.minY + box.maxY) / 2);
 }
 
 function pasEchantillonnageTuile(largeur, hauteur, maxSamples = 144) {
@@ -206,8 +211,8 @@ function couleurImageKMeans(pixels, larg, haut, maxSamples = 96) {
   }
 }
 
-function couleurTuile(pixels, larg, haut, sommets) {
-  const box = boitePolygone(sommets);
+function couleurTuile(pixels, larg, haut, ti) {
+  const box = boiteTuile(ti);
   const x0 = Math.max(0, Math.floor(box.minX));
   const y0 = Math.max(0, Math.floor(box.minY));
   const x1 = Math.min(larg, Math.ceil(box.maxX));
@@ -220,20 +225,15 @@ function couleurTuile(pixels, larg, haut, sommets) {
     for (let px = x0; px < x1; px += pas) {
       const sx = Math.min(x1 - 0.5, px + demiPas);
       const sy = Math.min(y1 - 0.5, py + demiPas);
-      if (pointDansPolygone(sx, sy, sommets)) {
-        const ix = Math.min(larg - 1, Math.max(0, Math.floor(sx)));
-        const iy = Math.min(haut - 1, Math.max(0, Math.floor(sy)));
-        const i = (iy * larg + ix) * 4;
-        rTot += pixels[i]; gTot += pixels[i + 1]; bTot += pixels[i + 2];
+      if (wasm.tuile_contient_point(ti, sx, sy)) {
+        const [r, g, b] = lirePixel(pixels, larg, haut, sx, sy);
+        rTot += r; gTot += g; bTot += b;
         compte++;
       }
     }
   }
   if (compte === 0) {
-    const cx = Math.min(larg - 1, Math.max(0, Math.round((box.minX + box.maxX) / 2)));
-    const cy = Math.min(haut - 1, Math.max(0, Math.round((box.minY + box.maxY) / 2)));
-    const i = (cy * larg + cx) * 4;
-    return [pixels[i], pixels[i + 1], pixels[i + 2]];
+    return couleurTuileSecours(pixels, larg, haut, ti, box);
   }
   return [couleur_moyenne(rTot, compte), couleur_moyenne(gTot, compte), couleur_moyenne(bTot, compte)];
 }
@@ -361,7 +361,7 @@ async function rendreSortie() {
         tuilesInvalides++;
         continue;
       }
-      const couleur = couleurTuile(pixelData, w, h, sommets);
+      const couleur = couleurTuile(pixelData, w, h, ti);
       if (couleur) dessinerTuile(ctx, sommets, couleur, state.outlineWidth, cssContour);
     }
 

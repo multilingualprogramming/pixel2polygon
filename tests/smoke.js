@@ -163,12 +163,24 @@ globalThis.__testExports = {
   state,
   METHODES,
   couleurImageKMeans,
+  couleurTuile,
   rendreSortie,
   lierControles,
   basculerOnglet,
   setLoadedImage(value) { loadedImage = value; },
   setRendreSortie(fn) { rendreSortie = fn; },
-  setWasm(mock) { wasm = mock; },
+  setWasm(mock) {
+    wasm = {
+      tuile_centre_x() { return 0; },
+      tuile_centre_y() { return 0; },
+      tuile_boite_min_x() { return 0; },
+      tuile_boite_max_x() { return 0; },
+      tuile_boite_min_y() { return 0; },
+      tuile_boite_max_y() { return 0; },
+      tuile_contient_point() { return 1; },
+      ...mock,
+    };
+  },
 };
 `;
   vm.runInNewContext(source, context, { filename: "public/app.js" });
@@ -460,6 +472,38 @@ async function testTriangleRenderKeepsRequestedSmallTileSize() {
   assert.strictEqual(api.state.side, 5);
 }
 
+function testTileColorFallbackUsesInteriorSample() {
+  const { api } = buildHarness();
+  api.setWasm({
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init() {}, km_ajouter() {}, km_calculer() {},
+    km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
+    tuile_centre_x() { return 0; },
+    tuile_centre_y() { return 1.5; },
+    tuile_boite_min_x() { return 0; },
+    tuile_boite_max_x() { return 0.2; },
+    tuile_boite_min_y() { return 0; },
+    tuile_boite_max_y() { return 3; },
+    tuile_contient_point() { return 0; },
+  });
+
+  const larg = 4;
+  const haut = 4;
+  const pixels = new Uint8ClampedArray(larg * haut * 4);
+  const setPixel = (x, y, r, g, b) => {
+    const i = (y * larg + x) * 4;
+    pixels[i] = r;
+    pixels[i + 1] = g;
+    pixels[i + 2] = b;
+    pixels[i + 3] = 255;
+  };
+
+  setPixel(0, 1, 10, 20, 30);
+  setPixel(0, 2, 200, 10, 10);
+
+  assert.deepStrictEqual(Array.from(api.couleurTuile(pixels, larg, haut, 0)), [10, 20, 30]);
+}
+
 async function testRenderSkipsInvalidTilesWithoutCrashing() {
   const { elements, api } = buildHarness();
   const sourceCanvas = elements.get("source-canvas");
@@ -599,6 +643,7 @@ async function run() {
   await testWasmTileGeometryStaysBounded();
   await testRenderSanitizesTileSizeBeforeWasm();
   await testTriangleRenderKeepsRequestedSmallTileSize();
+  testTileColorFallbackUsesInteriorSample();
   await testRenderSkipsInvalidTilesWithoutCrashing();
   await testAllTileCategoriesRenderWithWasm();
   await testMlResetCalledBeforeEachRender();

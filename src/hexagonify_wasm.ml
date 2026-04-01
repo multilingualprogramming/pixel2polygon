@@ -1395,13 +1395,9 @@ def generer_tuiles(larg, haut, a, methode):
     retour _compte_tuiles
 
 
-def tuile_n_sommets(i):
-    global _tuiles_n, _methode_active, _cache_n
-    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_xs, _cache_ys, _cache_actif
-    si _methode_active == 0:
-        retour 6
-    si _methode_active == 1:
-        retour 4
+def _charger_tuile_cache(i):
+    global _cache_n, _cache_xs, _cache_ys
+    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_actif
     _vus_n = []
     _vus_cx = []
     _vus_cy = []
@@ -1430,6 +1426,16 @@ def tuile_n_sommets(i):
         _gen_grand_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
     si _methode_active == 10:
         _gen_hex_tronque(_gen_larg, _gen_haut, _gen_a)
+
+
+def tuile_n_sommets(i):
+    global _tuiles_n, _methode_active, _cache_n
+    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_xs, _cache_ys, _cache_actif
+    si _methode_active == 0:
+        retour 6
+    si _methode_active == 1:
+        retour 4
+    _charger_tuile_cache(i)
     si _cache_trouve == 1:
         retour _cache_n
     retour 0
@@ -1456,34 +1462,7 @@ def tuile_sommet_x(i, j):
             retour x2
         retour x
     si _cache_trouve != 1 ou _cible_tuile != entier(i):
-        _vus_n = []
-        _vus_cx = []
-        _vus_cy = []
-        _compte_tuiles = 0
-        _cible_tuile = entier(i)
-        _cache_trouve = 0
-        _cache_n = 0
-        _cache_xs = []
-        _cache_ys = []
-        _cache_actif = 1
-        si _methode_active == 2:
-            _gen_triangle(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 3:
-            _gen_trihex(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 4:
-            _gen_snub_trihex(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 5:
-            _gen_elongated_triangular(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 6:
-            _gen_carre_snub(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 7:
-            _gen_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 8:
-            _gen_carre_tronque(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 9:
-            _gen_grand_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 10:
-            _gen_hex_tronque(_gen_larg, _gen_haut, _gen_a)
+        _charger_tuile_cache(i)
     si _cache_trouve == 1:
         retour _lire_cache_x(entier(j))
     retour 0.0
@@ -1510,37 +1489,116 @@ def tuile_sommet_y(i, j):
             retour y2
         retour y2
     si _cache_trouve != 1 ou _cible_tuile != entier(i):
-        _vus_n = []
-        _vus_cx = []
-        _vus_cy = []
-        _compte_tuiles = 0
-        _cible_tuile = entier(i)
-        _cache_trouve = 0
-        _cache_n = 0
-        _cache_xs = []
-        _cache_ys = []
-        _cache_actif = 1
-        si _methode_active == 2:
-            _gen_triangle(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 3:
-            _gen_trihex(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 4:
-            _gen_snub_trihex(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 5:
-            _gen_elongated_triangular(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 6:
-            _gen_carre_snub(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 7:
-            _gen_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 8:
-            _gen_carre_tronque(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 9:
-            _gen_grand_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
-        si _methode_active == 10:
-            _gen_hex_tronque(_gen_larg, _gen_haut, _gen_a)
+        _charger_tuile_cache(i)
     si _cache_trouve == 1:
         retour _lire_cache_y(entier(j))
     retour 0.0
+
+
+def tuile_centre_x(i):
+    si _methode_active == 0:
+        retour _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 1:
+        soit cols = entier(math.ceil(_gen_larg / _gen_a))
+        soit col = entier(i) % cols
+        soit x = col * _gen_a
+        soit x2 = min(_gen_larg, x + _gen_a)
+        retour (x + x2) / 2.0
+    si _cache_trouve != 1 ou _cible_tuile != entier(i):
+        _charger_tuile_cache(i)
+    si _cache_trouve != 1 ou _cache_n <= 0:
+        retour 0.0
+    soit sx = 0.0
+    pour j dans range(_cache_n):
+        sx = sx + _lire_cache_x(j)
+    retour sx / _cache_n
+
+
+def tuile_centre_y(i):
+    si _methode_active == 0:
+        retour _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 1:
+        soit cols = entier(math.ceil(_gen_larg / _gen_a))
+        soit rang = entier(i) // cols
+        soit y = rang * _gen_a
+        soit y2 = min(_gen_haut, y + _gen_a)
+        retour (y + y2) / 2.0
+    si _cache_trouve != 1 ou _cible_tuile != entier(i):
+        _charger_tuile_cache(i)
+    si _cache_trouve != 1 ou _cache_n <= 0:
+        retour 0.0
+    soit sy = 0.0
+    pour j dans range(_cache_n):
+        sy = sy + _lire_cache_y(j)
+    retour sy / _cache_n
+
+
+def tuile_boite_min_x(i):
+    soit n = tuile_n_sommets(i)
+    si n <= 0:
+        retour 0.0
+    soit min_x = tuile_sommet_x(i, 0)
+    pour j dans range(1, n):
+        soit x = tuile_sommet_x(i, j)
+        si x < min_x:
+            min_x = x
+    retour min_x
+
+
+def tuile_boite_max_x(i):
+    soit n = tuile_n_sommets(i)
+    si n <= 0:
+        retour 0.0
+    soit max_x = tuile_sommet_x(i, 0)
+    pour j dans range(1, n):
+        soit x = tuile_sommet_x(i, j)
+        si x > max_x:
+            max_x = x
+    retour max_x
+
+
+def tuile_boite_min_y(i):
+    soit n = tuile_n_sommets(i)
+    si n <= 0:
+        retour 0.0
+    soit min_y = tuile_sommet_y(i, 0)
+    pour j dans range(1, n):
+        soit y = tuile_sommet_y(i, j)
+        si y < min_y:
+            min_y = y
+    retour min_y
+
+
+def tuile_boite_max_y(i):
+    soit n = tuile_n_sommets(i)
+    si n <= 0:
+        retour 0.0
+    soit max_y = tuile_sommet_y(i, 0)
+    pour j dans range(1, n):
+        soit y = tuile_sommet_y(i, j)
+        si y > max_y:
+            max_y = y
+    retour max_y
+
+
+def tuile_contient_point(i, px, py):
+    soit n = tuile_n_sommets(i)
+    si n < 3:
+        retour 0
+    soit dedans = 0
+    soit j = n - 1
+    pour i2 dans range(n):
+        soit xi = tuile_sommet_x(i, i2)
+        soit yi = tuile_sommet_y(i, i2)
+        soit xj = tuile_sommet_x(i, j)
+        soit yj = tuile_sommet_y(i, j)
+        si ((yi > py) != (yj > py)) et (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi):
+            si dedans == 0:
+                dedans = 1
+            sinon:
+                dedans = 0
+        j = i2
+    retour dedans
 
 
 # ── Codes de methode ──────────────────────────────────────────
