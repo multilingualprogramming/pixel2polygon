@@ -324,6 +324,8 @@ async function rendreSortie() {
     const h = entierSecurise(srcCanvas.height, 0, 1);
     const pixelData = srcCanvas.getContext("2d").getImageData(0, 0, w, h).data;
 
+    if (typeof wasm.__ml_reset === "function") wasm.__ml_reset();
+
     outCanvas.width = w;
     outCanvas.height = h;
     const ctx = outCanvas.getContext("2d");

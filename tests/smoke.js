@@ -498,6 +498,29 @@ async function testAllTileCategoriesRenderWithWasm() {
   }
 }
 
+async function testMlResetCalledBeforeEachRender() {
+  const { elements, api } = buildHarness();
+  const sourceCanvas = elements.get("source-canvas");
+  sourceCanvas.width = 10;
+  sourceCanvas.height = 10;
+  let resetCount = 0;
+
+  api.setWasm({
+    __ml_reset() { resetCount += 1; },
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init() {}, km_ajouter() {}, km_calculer() {},
+    km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
+    generer_tuiles() { return 1; },
+    tuile_n_sommets() { return 4; },
+    tuile_sommet_x(_i, j) { return [0, 10, 10, 0][j]; },
+    tuile_sommet_y(_i, j) { return [0, 0, 10, 10][j]; },
+  });
+
+  await api.rendreSortie();
+  await api.rendreSortie();
+  assert.strictEqual(resetCount, 2, "expected __ml_reset called once per render");
+}
+
 function testKMeansSamplingStaysUnderWasmLimit() {
   const { api } = buildHarness();
   let sampleCount = 0;
@@ -547,6 +570,7 @@ async function run() {
   await testRenderSanitizesTileSizeBeforeWasm();
   await testRenderSkipsInvalidTilesWithoutCrashing();
   await testAllTileCategoriesRenderWithWasm();
+  await testMlResetCalledBeforeEachRender();
   console.log("Smoke tests passed.");
 }
 
