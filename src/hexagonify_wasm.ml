@@ -245,6 +245,13 @@ _tuiles_n = []
 _vus_n = []
 _vus_cx = []
 _vus_cy = []
+_methode_active = 0
+
+
+déf _coord_vers_entier(valeur):
+    si valeur != valeur:
+        retour 0
+    retour entier(arrondir(valeur * 100.0))
 
 
 déf _tuiles_reinit():
@@ -258,6 +265,56 @@ déf _tuiles_reinit():
     _vus_cx = []
     _vus_cy = []
     retour 0
+
+
+déf _hors_champ(min_x, max_x, min_y, max_y, larg, haut):
+    si max_x < 0 ou max_y < 0 ou min_x > larg ou min_y > haut:
+        retour 1
+    retour 0
+
+
+déf _ajouter_tuile_4(x0, y0, x1, y1, x2, y2, x3, y3, larg, haut):
+    soit min_x = min(min(x0, x1), min(x2, x3))
+    soit max_x = max(max(x0, x1), max(x2, x3))
+    soit min_y = min(min(y0, y1), min(y2, y3))
+    soit max_y = max(max(y0, y1), max(y2, y3))
+    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
+        retour 0
+    _tuiles_off.append(len(_tuiles_xs))
+    _tuiles_n.append(4)
+    _tuiles_xs.append(_coord_vers_entier(x0))
+    _tuiles_ys.append(_coord_vers_entier(y0))
+    _tuiles_xs.append(_coord_vers_entier(x1))
+    _tuiles_ys.append(_coord_vers_entier(y1))
+    _tuiles_xs.append(_coord_vers_entier(x2))
+    _tuiles_ys.append(_coord_vers_entier(y2))
+    _tuiles_xs.append(_coord_vers_entier(x3))
+    _tuiles_ys.append(_coord_vers_entier(y3))
+    retour 1
+
+
+déf _ajouter_tuile_6(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, larg, haut):
+    soit min_x = min(min(min(x0, x1), min(x2, x3)), min(x4, x5))
+    soit max_x = max(max(max(x0, x1), max(x2, x3)), max(x4, x5))
+    soit min_y = min(min(min(y0, y1), min(y2, y3)), min(y4, y5))
+    soit max_y = max(max(max(y0, y1), max(y2, y3)), max(y4, y5))
+    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
+        retour 0
+    _tuiles_off.append(len(_tuiles_xs))
+    _tuiles_n.append(6)
+    _tuiles_xs.append(_coord_vers_entier(x0))
+    _tuiles_ys.append(_coord_vers_entier(y0))
+    _tuiles_xs.append(_coord_vers_entier(x1))
+    _tuiles_ys.append(_coord_vers_entier(y1))
+    _tuiles_xs.append(_coord_vers_entier(x2))
+    _tuiles_ys.append(_coord_vers_entier(y2))
+    _tuiles_xs.append(_coord_vers_entier(x3))
+    _tuiles_ys.append(_coord_vers_entier(y3))
+    _tuiles_xs.append(_coord_vers_entier(x4))
+    _tuiles_ys.append(_coord_vers_entier(y4))
+    _tuiles_xs.append(_coord_vers_entier(x5))
+    _tuiles_ys.append(_coord_vers_entier(y5))
+    retour 1
 
 
 déf _ajouter_poly(xs, ys, larg, haut):
@@ -290,19 +347,13 @@ déf _ajouter_poly(xs, ys, larg, haut):
     cy = sy / n
     si cx != cx ou cy != cy:
         retour 0
-    cx = entier(cx * 100.0) / 100.0
-    cy = entier(cy * 100.0) / 100.0
-    pour k dans range(len(_vus_n)):
-        si _vus_n[k] == n et _vus_cx[k] == cx et _vus_cy[k] == cy:
-            retour 0
-    _vus_n.append(n)
-    _vus_cx.append(cx)
-    _vus_cy.append(cy)
+    soit cx_q = _coord_vers_entier(cx)
+    soit cy_q = _coord_vers_entier(cy)
     _tuiles_off.append(len(_tuiles_xs))
     _tuiles_n.append(n)
     pour i dans range(n):
-        _tuiles_xs.append(xs[i])
-        _tuiles_ys.append(ys[i])
+        _tuiles_xs.append(_coord_vers_entier(xs[i]))
+        _tuiles_ys.append(_coord_vers_entier(ys[i]))
     retour 1
 
 
@@ -324,9 +375,19 @@ déf _gen_hex(larg, haut, a):
         decal = (rang % 2) * (hs / 2.0)
         pour col dans range(cols):
             x = -hs + decal + col * hs
-            soit xs = [sommet_hex_x(x, y, a, i) pour i dans range(6)]
-            soit ys = [sommet_hex_y(x, y, a, i) pour i dans range(6)]
-            _ajouter_poly(xs, ys, larg, haut)
+            soit x0 = sommet_hex_x(x, y, a, 0)
+            soit y0 = sommet_hex_y(x, y, a, 0)
+            soit x1 = sommet_hex_x(x, y, a, 1)
+            soit y1 = sommet_hex_y(x, y, a, 1)
+            soit x2 = sommet_hex_x(x, y, a, 2)
+            soit y2 = sommet_hex_y(x, y, a, 2)
+            soit x3 = sommet_hex_x(x, y, a, 3)
+            soit y3 = sommet_hex_y(x, y, a, 3)
+            soit x4 = sommet_hex_x(x, y, a, 4)
+            soit y4 = sommet_hex_y(x, y, a, 4)
+            soit x5 = sommet_hex_x(x, y, a, 5)
+            soit y5 = sommet_hex_y(x, y, a, 5)
+            _ajouter_tuile_6(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, larg, haut)
     retour 0
 
 
@@ -339,9 +400,7 @@ déf _gen_carre(larg, haut, a):
             y = rang * a
             x2 = min(larg, x + a)
             y2 = min(haut, y + a)
-            soit xs = [x, x2, x2, x]
-            soit ys = [y, y, y2, y2]
-            _ajouter_poly(xs, ys, larg, haut)
+            _ajouter_tuile_4(x, y, x2, y, x2, y2, x, y2, larg, haut)
     retour 0
 
 
@@ -593,12 +652,14 @@ déf _gen_hex_tronque(larg, haut, a):
 # ── Dispatch et acces aux tuiles ──────────────────────────────
 
 déf generer_tuiles(larg, haut, a, methode):
+    global _methode_active
     _tuiles_reinit()
     si larg != larg ou haut != haut ou a != a ou methode != methode:
         retour 0
     si a <= 0:
         retour 0
     m = entier(methode)
+    _methode_active = m
     si m == 0:
         _gen_hex(larg, haut, a)
     si m == 1:
@@ -625,18 +686,24 @@ déf generer_tuiles(larg, haut, a, methode):
 
 
 déf tuile_n_sommets(i):
-    global _tuiles_n
+    global _tuiles_n, _methode_active
+    si _methode_active == 0:
+        retour 6
+    si _methode_active == 1:
+        retour 4
+    si _methode_active == 2:
+        retour 3
     retour _tuiles_n[entier(i)]
 
 
 déf tuile_sommet_x(i, j):
     global _tuiles_xs, _tuiles_off
-    retour _tuiles_xs[entier(_tuiles_off[entier(i)]) + entier(j)]
+    retour _tuiles_xs[entier(_tuiles_off[entier(i)]) + entier(j)] / 100.0
 
 
 déf tuile_sommet_y(i, j):
     global _tuiles_ys, _tuiles_off
-    retour _tuiles_ys[entier(_tuiles_off[entier(i)]) + entier(j)]
+    retour _tuiles_ys[entier(_tuiles_off[entier(i)]) + entier(j)] / 100.0
 
 
 # ── Codes de methode ──────────────────────────────────────────
