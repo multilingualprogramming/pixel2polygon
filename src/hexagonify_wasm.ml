@@ -378,13 +378,6 @@ def km_b():
 
 # ── Stockage global des tuiles ────────────────────────────────
 
-_tuiles_xs = []
-_tuiles_ys = []
-_tuiles_off = []
-_tuiles_n = []
-_vus_n = []
-_vus_cx = []
-_vus_cy = []
 _methode_active = 0
 _gen_larg = 0.0
 _gen_haut = 0.0
@@ -429,17 +422,8 @@ def _coord_vers_entier(valeur):
 
 
 def _tuiles_reinit():
-    global _tuiles_xs, _tuiles_ys, _tuiles_off, _tuiles_n
-    global _vus_n, _vus_cx, _vus_cy
     global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys, _cache_actif
     global _cache_x0, _cache_y0, _cache_x1, _cache_y1, _cache_x2, _cache_y2, _cache_x3, _cache_y3, _cache_x4, _cache_y4, _cache_x5, _cache_y5, _cache_x6, _cache_y6, _cache_x7, _cache_y7, _cache_x8, _cache_y8, _cache_x9, _cache_y9, _cache_x10, _cache_y10, _cache_x11, _cache_y11
-    _tuiles_xs = []
-    _tuiles_ys = []
-    _tuiles_off = []
-    _tuiles_n = []
-    _vus_n = []
-    _vus_cx = []
-    _vus_cy = []
     _compte_tuiles = 0
     _cible_tuile = 2147483647
     _cache_trouve = 0
@@ -714,16 +698,6 @@ def _ajouter_tuile_4(x0, y0, x1, y1, x2, y2, x3, y3, larg, haut):
     soit max_y = max(max(y0, y1), max(y2, y3))
     si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
         retour 0
-    _tuiles_off.append(len(_tuiles_xs))
-    _tuiles_n.append(4)
-    _tuiles_xs.append(_coord_vers_entier(x0))
-    _tuiles_ys.append(_coord_vers_entier(y0))
-    _tuiles_xs.append(_coord_vers_entier(x1))
-    _tuiles_ys.append(_coord_vers_entier(y1))
-    _tuiles_xs.append(_coord_vers_entier(x2))
-    _tuiles_ys.append(_coord_vers_entier(y2))
-    _tuiles_xs.append(_coord_vers_entier(x3))
-    _tuiles_ys.append(_coord_vers_entier(y3))
     retour 1
 
 
@@ -734,26 +708,11 @@ def _ajouter_tuile_6(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, larg, haut)
     soit max_y = max(max(max(y0, y1), max(y2, y3)), max(y4, y5))
     si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
         retour 0
-    _tuiles_off.append(len(_tuiles_xs))
-    _tuiles_n.append(6)
-    _tuiles_xs.append(_coord_vers_entier(x0))
-    _tuiles_ys.append(_coord_vers_entier(y0))
-    _tuiles_xs.append(_coord_vers_entier(x1))
-    _tuiles_ys.append(_coord_vers_entier(y1))
-    _tuiles_xs.append(_coord_vers_entier(x2))
-    _tuiles_ys.append(_coord_vers_entier(y2))
-    _tuiles_xs.append(_coord_vers_entier(x3))
-    _tuiles_ys.append(_coord_vers_entier(y3))
-    _tuiles_xs.append(_coord_vers_entier(x4))
-    _tuiles_ys.append(_coord_vers_entier(y4))
-    _tuiles_xs.append(_coord_vers_entier(x5))
-    _tuiles_ys.append(_coord_vers_entier(y5))
     retour 1
 
 
 
 def _ajouter_poly(xs, ys, larg, haut):
-    global _vus_n, _vus_cx, _vus_cy
     global _compte_tuiles, _cible_tuile, _cache_actif, _cache_trouve, _cache_n, _cache_xs, _cache_ys
     global _cache_x0, _cache_y0, _cache_x1, _cache_y1, _cache_x2, _cache_y2, _cache_x3, _cache_y3, _cache_x4, _cache_y4, _cache_x5, _cache_y5, _cache_x6, _cache_y6, _cache_x7, _cache_y7, _cache_x8, _cache_y8, _cache_x9, _cache_y9, _cache_x10, _cache_y10, _cache_x11, _cache_y11
     n = len(xs)
@@ -1397,10 +1356,7 @@ def generer_tuiles(larg, haut, a, methode):
 
 def _charger_tuile_cache(i):
     global _cache_n, _cache_xs, _cache_ys
-    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_actif
-    _vus_n = []
-    _vus_cx = []
-    _vus_cy = []
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_actif
     _compte_tuiles = 0
     _cible_tuile = entier(i)
     _cache_trouve = 0
@@ -1429,8 +1385,8 @@ def _charger_tuile_cache(i):
 
 
 def tuile_n_sommets(i):
-    global _tuiles_n, _methode_active, _cache_n
-    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_xs, _cache_ys, _cache_actif
+    global _methode_active, _cache_n
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_xs, _cache_ys, _cache_actif
     si _methode_active == 0:
         retour 6
     si _methode_active == 1:
@@ -1442,8 +1398,8 @@ def tuile_n_sommets(i):
 
 
 def tuile_sommet_x(i, j):
-    global _tuiles_xs, _tuiles_off, _methode_active, _gen_larg, _gen_haut, _gen_a, _cache_xs
-    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_ys, _cache_actif
+    global _methode_active, _gen_larg, _gen_haut, _gen_a, _cache_xs
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_ys, _cache_actif
     global _cache_x0, _cache_x1, _cache_x2, _cache_x3, _cache_x4, _cache_x5, _cache_x6, _cache_x7, _cache_x8, _cache_x9, _cache_x10, _cache_x11
     si _methode_active == 0:
         soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
@@ -1469,8 +1425,8 @@ def tuile_sommet_x(i, j):
 
 
 def tuile_sommet_y(i, j):
-    global _tuiles_ys, _tuiles_off, _methode_active, _gen_larg, _gen_haut, _gen_a, _cache_ys
-    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_actif
+    global _methode_active, _gen_larg, _gen_haut, _gen_a, _cache_ys
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_actif
     global _cache_y0, _cache_y1, _cache_y2, _cache_y3, _cache_y4, _cache_y5, _cache_y6, _cache_y7, _cache_y8, _cache_y9, _cache_y10, _cache_y11
     si _methode_active == 0:
         soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)

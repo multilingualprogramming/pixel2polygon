@@ -195,20 +195,7 @@ function couleurImageMoyenne(pixels, larg, haut, maxSamples = 96) {
 }
 
 function couleurImageKMeans(pixels, larg, haut, maxSamples = 96) {
-  try {
-    const total = larg * haut;
-    const step = Math.max(1, Math.floor(total / maxSamples));
-    km_init(3);
-    for (let i = 0; i < total; i += step) {
-      const idx = i * 4;
-      km_ajouter(pixels[idx], pixels[idx + 1], pixels[idx + 2]);
-    }
-    km_calculer(20);
-    return km_resultat();
-  } catch (err) {
-    console.warn("[pixel2polygon] K-means indisponible, repli sur la moyenne :", err);
-    return couleurImageMoyenne(pixels, larg, haut, maxSamples);
-  }
+  return couleurImageMoyenne(pixels, larg, haut, maxSamples);
 }
 
 function couleurTuile(pixels, larg, haut, ti) {

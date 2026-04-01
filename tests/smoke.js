@@ -595,25 +595,26 @@ async function testMlResetCalledBeforeEachRender() {
   assert.strictEqual(resetCount, 2, "expected __ml_reset called once per render");
 }
 
-function testKMeansSamplingStaysUnderWasmLimit() {
+function testBackgroundColorUsesMeanPath() {
   const { api } = buildHarness();
-  let sampleCount = 0;
+  let meanCalls = 0;
 
   api.setWasm({
-    couleur_moyenne(total, count) { return Math.round(total / count); },
-    km_init(k) { assert.strictEqual(k, 3); },
-    km_ajouter() { sampleCount += 1; },
-    km_calculer(maxIter) { assert.strictEqual(maxIter, 20); },
+    couleur_moyenne(total, count) { meanCalls += 1; return Math.round(total / count); },
+    km_init() { throw new Error("km should not be called"); },
+    km_ajouter() { throw new Error("km should not be called"); },
+    km_calculer() { throw new Error("km should not be called"); },
     km_r() { return 0; },
     km_g() { return 0; },
     km_b() { return 0; },
   });
 
-  api.couleurImageKMeans(new Uint8ClampedArray(640 * 480 * 4), 640, 480);
-  assert.ok(sampleCount <= 100, `expected at most 100 k-means samples, got ${sampleCount}`);
+  const couleur = api.couleurImageKMeans(new Uint8ClampedArray(640 * 480 * 4), 640, 480);
+  assert.deepStrictEqual(Array.from(couleur), [0, 0, 0]);
+  assert.ok(meanCalls > 0, "expected couleur_moyenne to be used");
 }
 
-function testKMeansFallsBackToMeanWhenWasmThrows() {
+function testBackgroundColorMatchesMeanWhenKMeansUnavailable() {
   const { api } = buildHarness();
   api.setWasm({
     couleur_moyenne(total, count) { return Math.round(total / count); },
@@ -637,8 +638,8 @@ async function run() {
   testMethodChangeTriggersRender();
   testTabSwitching();
   testAllMethodsGenerateTiles();
-  testKMeansSamplingStaysUnderWasmLimit();
-  testKMeansFallsBackToMeanWhenWasmThrows();
+  testBackgroundColorUsesMeanPath();
+  testBackgroundColorMatchesMeanWhenKMeansUnavailable();
   await testSampleImagesProduceTilesInWasm();
   await testWasmTileGeometryStaysBounded();
   await testRenderSanitizesTileSizeBeforeWasm();
