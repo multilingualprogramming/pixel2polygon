@@ -238,7 +238,7 @@ def tri_arete_x3(x1, y1, x2, y2):
     si lon == 0:
         retour (x1 + x2) / 2.0
     h = math.sqrt(3.0) * lon / 2.0
-    nx = -dy / lon
+    nx = dy / lon
     retour (x1 + x2) / 2.0 + nx * h
 
 
@@ -249,7 +249,7 @@ def tri_arete_y3(x1, y1, x2, y2):
     si lon == 0:
         retour (y1 + y2) / 2.0
     h = math.sqrt(3.0) * lon / 2.0
-    ny = dx / lon
+    ny = -dx / lon
     retour (y1 + y2) / 2.0 + ny * h
 
 
@@ -867,7 +867,7 @@ def _gen_carre_tronque(larg, haut, a):
             soit o6y = sommet_oct_y(x, y, a, 6)
             soit o7x = sommet_oct_x(x, y, a, 7)
             soit o7y = sommet_oct_y(x, y, a, 7)
-            _ajouter_poly([o0x, o1x, o2x, o3x, o4x, o5x, o6x, o7x], [o0y, o1y, o2y, o3y, o4y, o5y, o6y, o7y], larg, haut)
+            _ajouter_tuile_8_direct(o0x, o0y, o1x, o1y, o2x, o2y, o3x, o3y, o4x, o4y, o5x, o5y, o6x, o6y, o7x, o7y, larg, haut)
             soit q10x = sommet_carre_pointe_x(x + pas / 2.0, y, a, 0)
             soit q10y = sommet_carre_pointe_y(x + pas / 2.0, y, a, 0)
             soit q11x = sommet_carre_pointe_x(x + pas / 2.0, y, a, 1)
@@ -927,7 +927,7 @@ def _gen_grand_rhombitrihex(larg, haut, a):
             soit d10y = sommet_dodec_y(x, y, a, 10)
             soit d11x = sommet_dodec_x(x, y, a, 11)
             soit d11y = sommet_dodec_y(x, y, a, 11)
-            _ajouter_poly([d0x, d1x, d2x, d3x, d4x, d5x, d6x, d7x, d8x, d9x, d10x, d11x], [d0y, d1y, d2y, d3y, d4y, d5y, d6y, d7y, d8y, d9y, d10y, d11y], larg, haut)
+            _ajouter_tuile_12_direct(d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y, d4x, d4y, d5x, d5y, d6x, d6y, d7x, d7y, d8x, d8y, d9x, d9y, d10x, d10y, d11x, d11y, larg, haut)
             pour i dans range(12):
                 p1x = d0x
                 p1y = d0y
@@ -1068,7 +1068,7 @@ def _gen_hex_tronque(larg, haut, a):
             soit d10y = sommet_dodec_y(x, y, a, 10)
             soit d11x = sommet_dodec_x(x, y, a, 11)
             soit d11y = sommet_dodec_y(x, y, a, 11)
-            _ajouter_poly([d0x, d1x, d2x, d3x, d4x, d5x, d6x, d7x, d8x, d9x, d10x, d11x], [d0y, d1y, d2y, d3y, d4y, d5y, d6y, d7y, d8y, d9y, d10y, d11y], larg, haut)
+            _ajouter_tuile_12_direct(d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y, d4x, d4y, d5x, d5y, d6x, d6y, d7x, d7y, d8x, d8y, d9x, d9y, d10x, d10y, d11x, d11y, larg, haut)
             pour i dans range(0, 12, 2):
                 p1x = d0x
                 p1y = d0y
