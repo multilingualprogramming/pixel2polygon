@@ -430,6 +430,36 @@ async function testRenderSanitizesTileSizeBeforeWasm() {
   assert.strictEqual(api.state.side, 30);
 }
 
+async function testTriangleRenderKeepsRequestedSmallTileSize() {
+  const { elements, api } = buildHarness();
+  const sourceCanvas = elements.get("source-canvas");
+  const status = elements.get("wasm-status");
+  sourceCanvas.width = 24;
+  sourceCanvas.height = 24;
+
+  api.state.side = 5;
+  api.state.method = "triangle";
+  api.setWasm({
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init() {}, km_ajouter() {}, km_calculer() {},
+    km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
+    generer_tuiles(larg, haut, a, code) {
+      assert.strictEqual(larg, 24);
+      assert.strictEqual(haut, 24);
+      assert.strictEqual(a, 5);
+      assert.strictEqual(code, api.METHODES.triangle);
+      return 1;
+    },
+    tuile_n_sommets() { return 3; },
+    tuile_sommet_x(_i, j) { return [0, 2.5, 5][j]; },
+    tuile_sommet_y(_i, j) { return [4, 0, 4][j]; },
+  });
+
+  await api.rendreSortie();
+  assert.match(status.textContent, /mode triangle/);
+  assert.strictEqual(api.state.side, 5);
+}
+
 async function testRenderSkipsInvalidTilesWithoutCrashing() {
   const { elements, api } = buildHarness();
   const sourceCanvas = elements.get("source-canvas");
@@ -568,6 +598,7 @@ async function run() {
   await testSampleImagesProduceTilesInWasm();
   await testWasmTileGeometryStaysBounded();
   await testRenderSanitizesTileSizeBeforeWasm();
+  await testTriangleRenderKeepsRequestedSmallTileSize();
   await testRenderSkipsInvalidTilesWithoutCrashing();
   await testAllTileCategoriesRenderWithWasm();
   await testMlResetCalledBeforeEachRender();

@@ -1,5 +1,5 @@
-// Maximum tiles the WASM module will store (matches _MAX_TUILES in hexagonify_wasm.ml).
-const MAX_TUILES_WASM = 2000;
+// Soft warning threshold used to flag renders that may become slow.
+const MAX_TUILES_RECOMMANDE = 2000;
 
 // Tile density per (cote² / image area) for each tiling method, used to warn
 // the user when the requested tile size would exceed the WASM tile cap.
@@ -10,9 +10,10 @@ const DENSITE_METHODE = {
   grand_rhombitrihex: 0.10, hex_tronque: 0.40,
 };
 
-function coteSuretePourImage(w, h, methode) {
+function estimerNombreTuiles(w, h, cote, methode) {
+  if (cote <= 0) return 0;
   const densite = DENSITE_METHODE[methode] ?? 2.0;
-  return Math.max(1, Math.ceil(Math.sqrt(densite * w * h / MAX_TUILES_WASM)));
+  return Math.max(1, Math.ceil((densite * w * h) / (cote * cote)));
 }
 
 const state = {
@@ -333,14 +334,7 @@ async function rendreSortie() {
     ctx.fillStyle = `rgb(${bgCouleur[0]},${bgCouleur[1]},${bgCouleur[2]})`;
     ctx.fillRect(0, 0, w, h);
 
-    let cote = entierSecurise(state.side, 30, 1);
-    const coteDemande = cote;
-    const coteMin = coteSuretePourImage(w, h, state.method);
-    if (cote < coteMin) cote = coteMin;
-    const { nTuiles, methodeUtilisee } = genererTuilesAvecRepli(w, h, cote, state.method);
-    if (cote !== coteDemande) {
-      status.textContent = `Taille ajustee a ${cote}px (limite du mode ${state.method}).`;
-    }
+    const cote = entierSecurise(state.side, 30, 1);
     if (cote !== state.side) {
       state.side = cote;
       const tileSizeEl = document.getElementById("tile-size");
@@ -348,6 +342,7 @@ async function rendreSortie() {
       const tileSizeDisp = document.getElementById("tile-size-display");
       if (tileSizeDisp) tileSizeDisp.textContent = String(cote);
     }
+    const { nTuiles, methodeUtilisee } = genererTuilesAvecRepli(w, h, cote, state.method);
     const indices = Array.from({ length: nTuiles }, (_, i) => i);
     indices.sort((a, b) => lireNombreSommetsTuile(a) - lireNombreSommetsTuile(b));
 
@@ -370,10 +365,14 @@ async function rendreSortie() {
       if (couleur) dessinerTuile(ctx, sommets, couleur, state.outlineWidth, cssContour);
     }
 
+    const estimation = estimerNombreTuiles(w, h, cote, state.method);
+    const avertissement = estimation > MAX_TUILES_RECOMMANDE
+      ? ` Estimation: ~${estimation} tuiles, rendu potentiellement lent.`
+      : "";
     const libelleMode = `mode ${methodeUtilisee}`;
     status.textContent = tuilesInvalides > 0
-      ? `Rendu termine : ${nTuiles - tuilesInvalides}/${nTuiles} tuiles valides pour le ${libelleMode}.`
-      : `Rendu termine : ${nTuiles} tuiles pour le ${libelleMode}.`;
+      ? `Rendu termine : ${nTuiles - tuilesInvalides}/${nTuiles} tuiles valides pour le ${libelleMode}.${avertissement}`
+      : `Rendu termine : ${nTuiles} tuiles pour le ${libelleMode}.${avertissement}`;
     btnDl.disabled = false;
   } catch (err) {
     console.error("[pixel2polygon] Echec du rendu :", err);
