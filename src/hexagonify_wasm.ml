@@ -953,24 +953,15 @@ def _gen_carre_tronque(larg, haut, a):
             soit o7x = sommet_oct_x(x, y, a, 7)
             soit o7y = sommet_oct_y(x, y, a, 7)
             _ajouter_tuile_8_direct(o0x, o0y, o1x, o1y, o2x, o2y, o3x, o3y, o4x, o4y, o5x, o5y, o6x, o6y, o7x, o7y, larg, haut)
-            soit q10x = sommet_carre_pointe_x(x + pas / 2.0, y, a, 0)
-            soit q10y = sommet_carre_pointe_y(x + pas / 2.0, y, a, 0)
-            soit q11x = sommet_carre_pointe_x(x + pas / 2.0, y, a, 1)
-            soit q11y = sommet_carre_pointe_y(x + pas / 2.0, y, a, 1)
-            soit q12x = sommet_carre_pointe_x(x + pas / 2.0, y, a, 2)
-            soit q12y = sommet_carre_pointe_y(x + pas / 2.0, y, a, 2)
-            soit q13x = sommet_carre_pointe_x(x + pas / 2.0, y, a, 3)
-            soit q13y = sommet_carre_pointe_y(x + pas / 2.0, y, a, 3)
-            _ajouter_tuile_4_direct(q10x, q10y, q11x, q11y, q12x, q12y, q13x, q13y, larg, haut)
-            soit q20x = sommet_carre_pointe_x(x, y + pas / 2.0, a, 0)
-            soit q20y = sommet_carre_pointe_y(x, y + pas / 2.0, a, 0)
-            soit q21x = sommet_carre_pointe_x(x, y + pas / 2.0, a, 1)
-            soit q21y = sommet_carre_pointe_y(x, y + pas / 2.0, a, 1)
-            soit q22x = sommet_carre_pointe_x(x, y + pas / 2.0, a, 2)
-            soit q22y = sommet_carre_pointe_y(x, y + pas / 2.0, a, 2)
-            soit q23x = sommet_carre_pointe_x(x, y + pas / 2.0, a, 3)
-            soit q23y = sommet_carre_pointe_y(x, y + pas / 2.0, a, 3)
-            _ajouter_tuile_4_direct(q20x, q20y, q21x, q21y, q22x, q22y, q23x, q23y, larg, haut)
+            soit q0x = sommet_carre_pointe_x(x + pas / 2.0, y + pas / 2.0, a, 0)
+            soit q0y = sommet_carre_pointe_y(x + pas / 2.0, y + pas / 2.0, a, 0)
+            soit q1x = sommet_carre_pointe_x(x + pas / 2.0, y + pas / 2.0, a, 1)
+            soit q1y = sommet_carre_pointe_y(x + pas / 2.0, y + pas / 2.0, a, 1)
+            soit q2x = sommet_carre_pointe_x(x + pas / 2.0, y + pas / 2.0, a, 2)
+            soit q2y = sommet_carre_pointe_y(x + pas / 2.0, y + pas / 2.0, a, 2)
+            soit q3x = sommet_carre_pointe_x(x + pas / 2.0, y + pas / 2.0, a, 3)
+            soit q3y = sommet_carre_pointe_y(x + pas / 2.0, y + pas / 2.0, a, 3)
+            _ajouter_tuile_4_direct(q0x, q0y, q1x, q1y, q2x, q2y, q3x, q3y, larg, haut)
             x = x + pas
         y = y + pas
     retour 0
@@ -1076,9 +1067,9 @@ def _gen_grand_rhombitrihex(larg, haut, a):
                 si lon == 0:
                     continuer
                 si i % 2 == 0:
-                    _ajouter_hex_depuis_arete(p1x, p1y, p2x, p2y, larg, haut)
+                    _ajouter_hex_depuis_arete(p2x, p2y, p1x, p1y, larg, haut)
                 sinon:
-                    _ajouter_carre_depuis_arete(p1x, p1y, p2x, p2y, larg, haut)
+                    _ajouter_carre_depuis_arete(p2x, p2y, p1x, p1y, larg, haut)
             x = x + pas_x
         rang = rang + 1
         y = y + pas_y
