@@ -1,8 +1,6 @@
-// Soft warning threshold used to flag renders that may become slow.
-const MAX_TUILES_RECOMMANDE = 2000;
+// Maximum tiles the WASM module will store.
+const MAX_TUILES_WASM = 2000;
 
-// Tile density per (cote² / image area) for each tiling method, used to warn
-// the user when the requested tile size would exceed the WASM tile cap.
 const DENSITE_METHODE = {
   hex: 0.50, square: 1.0, triangle: 2.50,
   trihex: 1.0, snub_trihex: 2.50, triangulaire_elongue: 1.70,
@@ -10,10 +8,9 @@ const DENSITE_METHODE = {
   grand_rhombitrihex: 0.10, hex_tronque: 0.40,
 };
 
-function estimerNombreTuiles(w, h, cote, methode) {
-  if (cote <= 0) return 0;
+function coteSuretePourImage(w, h, methode) {
   const densite = DENSITE_METHODE[methode] ?? 2.0;
-  return Math.max(1, Math.ceil((densite * w * h) / (cote * cote)));
+  return Math.max(1, Math.ceil(Math.sqrt(densite * w * h / MAX_TUILES_WASM)));
 }
 
 const state = {
@@ -49,6 +46,9 @@ const EXPORTS_CODES_METHODES = {
 let wasm = null;
 let loadedImage = null;
 let renderToken = 0;
+
+// Byte address of _sortie in WASM linear memory (cached after load).
+let sortiePtrBytes = 0;
 
 function urlWasmVersionnee() {
   try {
@@ -88,6 +88,9 @@ async function chargerWasm() {
 
     wasm = instance.exports;
     synchroniserCodesMethodes(wasm);
+    // Cache the byte address of the _sortie output buffer once.
+    sortiePtrBytes = Number(wasm.sortie_ptr()) + 8;
+
     status.textContent = "Moteur WASM charge.";
     btnApply.disabled = false;
     document.getElementById("upload-zone").style.pointerEvents = "auto";
@@ -116,25 +119,12 @@ function construireImports(module) {
 }
 
 function validerExports(exports) {
-  const requis = [
-    "couleur_moyenne",
-    "km_init", "km_ajouter", "km_calculer", "km_r", "km_g", "km_b",
-    "generer_tuiles", "tuile_n_sommets", "tuile_sommet_x", "tuile_sommet_y",
-    "tuile_centre_x", "tuile_centre_y",
-    "tuile_boite_min_x", "tuile_boite_max_x", "tuile_boite_min_y", "tuile_boite_max_y",
-    "tuile_contient_point",
-  ];
+  const requis = ["generer_tuiles", "charger_tuile", "sortie_ptr"];
   for (const nom of requis) {
     if (typeof exports[nom] !== "function") return false;
   }
   return true;
 }
-
-function couleur_moyenne(total, compte) { return Number(wasm.couleur_moyenne(total, compte)); }
-function km_init(k) { wasm.km_init(k); }
-function km_ajouter(r, g, b) { wasm.km_ajouter(r, g, b); }
-function km_calculer(maxIter) { wasm.km_calculer(maxIter); }
-function km_resultat() { return [Number(wasm.km_r()), Number(wasm.km_g()), Number(wasm.km_b())]; }
 
 function synchroniserCodesMethodes(exports) {
   for (const [nom, exportNom] of Object.entries(EXPORTS_CODES_METHODES)) {
@@ -144,85 +134,78 @@ function synchroniserCodesMethodes(exports) {
   }
 }
 
-function boiteTuile(ti) {
-  return {
-    minX: Number(wasm.tuile_boite_min_x(ti)),
-    maxX: Number(wasm.tuile_boite_max_x(ti)),
-    minY: Number(wasm.tuile_boite_min_y(ti)),
-    maxY: Number(wasm.tuile_boite_max_y(ti)),
-  };
-}
-
-function lirePixel(pixels, larg, haut, x, y) {
-  const ix = Math.min(larg - 1, Math.max(0, Math.floor(x)));
-  const iy = Math.min(haut - 1, Math.max(0, Math.floor(y)));
-  const i = (iy * larg + ix) * 4;
-  return [pixels[i], pixels[i + 1], pixels[i + 2]];
-}
-
-function couleurTuileSecours(pixels, larg, haut, ti, box) {
-  const sx = Number(wasm.tuile_centre_x(ti));
-  const sy = Number(wasm.tuile_centre_y(ti));
-  if (Number.isFinite(sx) && Number.isFinite(sy) && sx >= 0 && sy >= 0 && sx < larg && sy < haut) {
-    return lirePixel(pixels, larg, haut, sx, sy);
+// Read the _sortie buffer that charger_tuile(i) filled.
+// Returns an array of [x,y] pairs, length = n_verts. Returns null on invalid tile.
+function lireSortie(n) {
+  if (!Number.isInteger(n) || n < 3 || n > 12) return null;
+  const buf = new Float64Array(wasm.memory.buffer, sortiePtrBytes, 1 + n * 2);
+  const sommets = [];
+  for (let j = 0; j < n; j++) {
+    const x = buf[1 + j * 2];
+    const y = buf[2 + j * 2];
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    sommets.push([x, y]);
   }
-  return lirePixel(pixels, larg, haut, (box.minX + box.maxX) / 2, (box.minY + box.maxY) / 2);
+  return sommets;
 }
 
-function pasEchantillonnageTuile(largeur, hauteur, maxSamples = 144) {
-  const aireBoite = Math.max(1, largeur * hauteur);
-  return Math.max(1, Math.floor(Math.sqrt(aireBoite / maxSamples)));
-}
-
-function couleurImageMoyenne(pixels, larg, haut, maxSamples = 96) {
-  const total = larg * haut;
-  if (total <= 0) return [0, 0, 0];
-  const step = Math.max(1, Math.floor(total / maxSamples));
-  let rTot = 0, gTot = 0, bTot = 0, compte = 0;
-  for (let i = 0; i < total; i += step) {
-    const idx = i * 4;
-    rTot += pixels[idx];
-    gTot += pixels[idx + 1];
-    bTot += pixels[idx + 2];
-    compte++;
+function boitePolygone(sommets) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of sommets) {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
   }
-  if (compte === 0) return [0, 0, 0];
-  return [
-    couleur_moyenne(rTot, compte),
-    couleur_moyenne(gTot, compte),
-    couleur_moyenne(bTot, compte),
-  ];
+  return { minX, minY, maxX, maxY };
 }
 
-function couleurImageKMeans(pixels, larg, haut, maxSamples = 96) {
-  return couleurImageMoyenne(pixels, larg, haut, maxSamples);
+function pointDansPolygone(px, py, sommets) {
+  let dedans = false;
+  const n = sommets.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = sommets[i][0], yi = sommets[i][1];
+    const xj = sommets[j][0], yj = sommets[j][1];
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)
+      dedans = !dedans;
+  }
+  return dedans;
 }
 
-function couleurTuile(pixels, larg, haut, ti) {
-  const box = boiteTuile(ti);
-  const x0 = Math.max(0, Math.floor(box.minX));
-  const y0 = Math.max(0, Math.floor(box.minY));
-  const x1 = Math.min(larg, Math.ceil(box.maxX));
-  const y1 = Math.min(haut, Math.ceil(box.maxY));
+function couleurTuile(pixels, larg, haut, sommets) {
+  const { minX, minY, maxX, maxY } = boitePolygone(sommets);
+  const x0 = Math.max(0, Math.floor(minX));
+  const y0 = Math.max(0, Math.floor(minY));
+  const x1 = Math.min(larg, Math.ceil(maxX));
+  const y1 = Math.min(haut, Math.ceil(maxY));
   if (x1 <= x0 || y1 <= y0) return null;
-  const pas = pasEchantillonnageTuile(x1 - x0, y1 - y0);
+
+  const aire = Math.max(1, (x1 - x0) * (y1 - y0));
+  const pas = Math.max(1, Math.floor(Math.sqrt(aire / 144)));
   const demiPas = pas / 2;
   let rTot = 0, gTot = 0, bTot = 0, compte = 0;
+
   for (let py = y0; py < y1; py += pas) {
     for (let px = x0; px < x1; px += pas) {
       const sx = Math.min(x1 - 0.5, px + demiPas);
       const sy = Math.min(y1 - 0.5, py + demiPas);
-      if (wasm.tuile_contient_point(ti, sx, sy)) {
-        const [r, g, b] = lirePixel(pixels, larg, haut, sx, sy);
-        rTot += r; gTot += g; bTot += b;
+      if (pointDansPolygone(sx, sy, sommets)) {
+        const ix = Math.min(larg - 1, Math.max(0, Math.floor(sx)));
+        const iy = Math.min(haut - 1, Math.max(0, Math.floor(sy)));
+        const i = (iy * larg + ix) * 4;
+        rTot += pixels[i]; gTot += pixels[i + 1]; bTot += pixels[i + 2];
         compte++;
       }
     }
   }
+
   if (compte === 0) {
-    return couleurTuileSecours(pixels, larg, haut, ti, box);
+    const cx = Math.min(larg - 1, Math.max(0, Math.round((minX + maxX) / 2)));
+    const cy = Math.min(haut - 1, Math.max(0, Math.round((minY + maxY) / 2)));
+    const i = (cy * larg + cx) * 4;
+    return [pixels[i], pixels[i + 1], pixels[i + 2]];
   }
-  return [couleur_moyenne(rTot, compte), couleur_moyenne(gTot, compte), couleur_moyenne(bTot, compte)];
+  return [Math.round(rTot / compte), Math.round(gTot / compte), Math.round(bTot / compte)];
 }
 
 function dessinerTuile(ctx, sommets, couleur, largContour, couleurContour) {
@@ -247,43 +230,12 @@ function couleurContourCss() {
   return `rgba(${r},${g},${b},${(state.outlineOpacity / 100).toFixed(3)})`;
 }
 
-function lireSommetsTuile(ti) {
-  const n = Number(wasm.tuile_n_sommets(ti));
-  if (!Number.isInteger(n) || n < 3 || n > 64) return null;
-  const sommets = [];
-  for (let j = 0; j < n; j++) {
-    const x = Number(wasm.tuile_sommet_x(ti, j));
-    const y = Number(wasm.tuile_sommet_y(ti, j));
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    sommets.push([x, y]);
-  }
-  return sommets;
-}
-
-function lireNombreSommetsTuile(ti) {
-  try {
-    const n = Number(wasm.tuile_n_sommets(ti));
-    return Number.isInteger(n) && n >= 0 ? n : Number.MAX_SAFE_INTEGER;
-  } catch (err) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-}
-
 function entierSecurise(valeur, secours, minimum = null, maximum = null) {
   let n = Number.isFinite(valeur) ? Math.trunc(valeur) : Math.trunc(Number(valeur));
   if (!Number.isFinite(n)) n = secours;
   if (minimum !== null) n = Math.max(minimum, n);
   if (maximum !== null) n = Math.min(maximum, n);
   return n;
-}
-
-function genererTuilesAvecRepli(w, h, cote, methodeDemandee) {
-  const code = entierSecurise(METHODES[methodeDemandee], METHODES.hex, 0);
-  const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
-  if (!Number.isInteger(nTuiles) || nTuiles < 0) {
-    throw new Error(`Nombre de tuiles invalide renvoye par WASM: ${nTuiles}`);
-  }
-  return { nTuiles, methodeUtilisee: methodeDemandee };
 }
 
 function afficherSource(imgEl) {
@@ -317,49 +269,49 @@ async function rendreSortie() {
     outCanvas.width = w;
     outCanvas.height = h;
     const ctx = outCanvas.getContext("2d");
-    const bgCouleur = couleurImageKMeans(pixelData, w, h);
-    ctx.fillStyle = `rgb(${bgCouleur[0]},${bgCouleur[1]},${bgCouleur[2]})`;
+
+    // Background: mean color of image.
+    let rTot = 0, gTot = 0, bTot = 0;
+    const step = Math.max(1, Math.floor((w * h) / 96));
+    for (let i = 0; i < w * h; i += step) {
+      rTot += pixelData[i * 4];
+      gTot += pixelData[i * 4 + 1];
+      bTot += pixelData[i * 4 + 2];
+    }
+    const nSamples = Math.ceil((w * h) / step);
+    ctx.fillStyle = `rgb(${Math.round(rTot/nSamples)},${Math.round(gTot/nSamples)},${Math.round(bTot/nSamples)})`;
     ctx.fillRect(0, 0, w, h);
 
-    const cote = entierSecurise(state.side, 30, 1);
-    if (cote !== state.side) {
+    let cote = entierSecurise(state.side, 30, 1);
+    const coteDemande = cote;
+    const coteMin = coteSuretePourImage(w, h, state.method);
+    if (cote < coteMin) cote = coteMin;
+
+    const code = entierSecurise(METHODES[state.method], METHODES.hex, 0);
+    const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
+
+    if (cote !== coteDemande) {
       state.side = cote;
       const tileSizeEl = document.getElementById("tile-size");
       if (tileSizeEl) tileSizeEl.value = String(cote);
       const tileSizeDisp = document.getElementById("tile-size-display");
       if (tileSizeDisp) tileSizeDisp.textContent = String(cote);
     }
-    const { nTuiles, methodeUtilisee } = genererTuilesAvecRepli(w, h, cote, state.method);
-    const indices = Array.from({ length: nTuiles }, (_, i) => i);
-    indices.sort((a, b) => lireNombreSommetsTuile(a) - lireNombreSommetsTuile(b));
 
     const cssContour = couleurContourCss();
     let tuilesInvalides = 0;
-    for (const ti of indices) {
-      let sommets = null;
-      try {
-        sommets = lireSommetsTuile(ti);
-      } catch (err) {
-        tuilesInvalides++;
-        console.warn(`[pixel2polygon] Tuile ${ti} ignoree :`, err);
-        continue;
-      }
-      if (!sommets) {
-        tuilesInvalides++;
-        continue;
-      }
-      const couleur = couleurTuile(pixelData, w, h, ti);
+
+    for (let ti = 0; ti < nTuiles; ti++) {
+      const n = Number(wasm.charger_tuile(ti));
+      const sommets = lireSortie(n);
+      if (!sommets) { tuilesInvalides++; continue; }
+      const couleur = couleurTuile(pixelData, w, h, sommets);
       if (couleur) dessinerTuile(ctx, sommets, couleur, state.outlineWidth, cssContour);
     }
 
-    const estimation = estimerNombreTuiles(w, h, cote, state.method);
-    const avertissement = estimation > MAX_TUILES_RECOMMANDE
-      ? ` Estimation: ~${estimation} tuiles, rendu potentiellement lent.`
-      : "";
-    const libelleMode = `mode ${methodeUtilisee}`;
     status.textContent = tuilesInvalides > 0
-      ? `Rendu termine : ${nTuiles - tuilesInvalides}/${nTuiles} tuiles valides pour le ${libelleMode}.${avertissement}`
-      : `Rendu termine : ${nTuiles} tuiles pour le ${libelleMode}.${avertissement}`;
+      ? `Rendu termine : ${nTuiles - tuilesInvalides}/${nTuiles} tuiles valides pour le mode ${state.method}.`
+      : `Rendu termine : ${nTuiles} tuiles pour le mode ${state.method}.`;
     btnDl.disabled = false;
   } catch (err) {
     console.error("[pixel2polygon] Echec du rendu :", err);
@@ -405,6 +357,13 @@ const planifierRendu = debounce(() => {
   if (loadedImage && state.autoApply) rendreSortie();
 }, 300);
 
+function basculerOnglet(nom) {
+  const panneaux = ["studio-panel", "source-panel"];
+  const onglets  = ["tab-studio", "tab-sources"];
+  panneaux.forEach((id) => { document.getElementById(id).hidden = (id !== `${nom}-panel`); });
+  onglets.forEach((id)  => { document.getElementById(id).classList.toggle("active", id === `tab-${nom}`); });
+}
+
 function lierControles() {
   const methodSelect = document.getElementById("method-select");
   methodSelect.value = state.method;
@@ -447,9 +406,9 @@ function lierControles() {
     planifierRendu();
   });
 
-  const autoEl = document.getElementById("auto-apply");
-  autoEl.checked = state.autoApply;
-  autoEl.addEventListener("change", () => { state.autoApply = autoEl.checked; });
+  const autoApplyEl = document.getElementById("auto-apply");
+  autoApplyEl.checked = state.autoApply;
+  autoApplyEl.addEventListener("change", () => { state.autoApply = autoApplyEl.checked; });
 
   document.getElementById("btn-apply").addEventListener("click", () => {
     if (loadedImage) rendreSortie();
@@ -458,11 +417,11 @@ function lierControles() {
   document.getElementById("btn-new-image").addEventListener("click", afficherZoneUpload);
 
   document.getElementById("btn-download").addEventListener("click", () => {
-    const canvas = document.getElementById("output-canvas");
-    const lien = document.createElement("a");
-    lien.href = canvas.toDataURL("image/png");
-    lien.download = `pixel2polygon-${state.method}-${state.side}px.png`;
-    lien.click();
+    const outCanvas = document.getElementById("output-canvas");
+    const a = document.createElement("a");
+    a.download = `pixel2polygon-${state.method}.png`;
+    a.href = outCanvas.toDataURL("image/png");
+    a.click();
   });
 
   const fileInput = document.getElementById("file-input");
@@ -471,39 +430,21 @@ function lierControles() {
   });
 
   const uploadZone = document.getElementById("upload-zone");
-  uploadZone.addEventListener("click", (e) => { if (e.target.tagName !== "LABEL") fileInput.click(); });
-  uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("dragover"); });
-  uploadZone.addEventListener("dragleave", () => { uploadZone.classList.remove("dragover"); });
+  uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
+  uploadZone.addEventListener("dragleave", () => { uploadZone.classList.remove("drag-over"); });
   uploadZone.addEventListener("drop", (e) => {
     e.preventDefault();
-    uploadZone.classList.remove("dragover");
+    uploadZone.classList.remove("drag-over");
     const fichier = e.dataTransfer.files[0];
     if (fichier) chargerImageDepuisFichier(fichier);
   });
 
-  document.addEventListener("paste", (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith("image/")) { chargerImageDepuisFichier(item.getAsFile()); break; }
-    }
-  });
-}
-
-function basculerOnglet(nom) {
-  const studio = nom === "studio";
-  document.getElementById("studio-panel").hidden = !studio;
-  document.getElementById("tab-studio").classList.toggle("active", studio);
+  document.getElementById("tab-studio").addEventListener("click", () => basculerOnglet("studio"));
 }
 
 async function init() {
-  const btnApply = document.getElementById("btn-apply");
-  if (btnApply) btnApply.disabled = true;
-  const tabStudio = document.getElementById("tab-studio");
-  if (tabStudio) tabStudio.addEventListener("click", () => basculerOnglet("studio"));
-  basculerOnglet("studio");
-  try { lierControles(); } catch (err) { console.error("[pixel2polygon] Echec de liaison des controles :", err); }
-  try { await chargerWasm(); } catch (err) { console.error("[pixel2polygon] Echec d'initialisation WASM :", err); }
+  lierControles();
+  await chargerWasm();
 }
 
 init();

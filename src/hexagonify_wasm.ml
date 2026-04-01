@@ -140,10 +140,6 @@ def sommet_dodec_y(cx, cy, a, idx):
         retour cy + d
     retour cy + h
 
-# Module WASM-compatible pour le carrelage d'images.
-# Exporte les primitives geometriques et les generateurs de tuiles
-# utilises par l'interface JavaScript.
-
 
 # ── Hexagone (sommet pointu en haut) ──────────────────────────
 
@@ -207,7 +203,7 @@ def sommet_tri_x(x, a, idx, vers_haut):
 
 
 def sommet_tri_y(y, a, idx, vers_haut):
-    h = a * math.sqrt(3.0) / 2.0
+    h = hauteur_tri(a)
     si vers_haut == 1:
         si idx == 0:
             retour y + h
@@ -221,40 +217,24 @@ def sommet_tri_y(y, a, idx, vers_haut):
     retour y + h
 
 
-# ── Couleur ───────────────────────────────────────────────────
-
-def couleur_moyenne(total, compte):
-    si compte == 0:
-        retour 0
-    retour entier(arrondir(total / compte))
-
-
-# ── Geometrie avancee ─────────────────────────────────────────
-
-def apotheme(n, cote):
-    retour cote / (2.0 * math.tan(math.pi / n))
-
-
-def rayon(n, cote):
-    retour cote / (2.0 * math.sin(math.pi / n))
-
-
-def polygone_x(cx, cy, cote, n, rotation, i):
-    r = rayon(n, cote)
-    angle = rotation + (2.0 * math.pi * i) / n
-    retour cx + r * math.cos(angle)
-
-
-def polygone_y(cx, cy, cote, n, rotation, i):
-    r = rayon(n, cote)
-    angle = rotation + (2.0 * math.pi * i) / n
-    retour cy + r * math.sin(angle)
+def apotheme(n, a):
+    si n == 3:
+        retour a * math.sqrt(3.0) / 6.0
+    si n == 4:
+        retour a / 2.0
+    si n == 6:
+        retour a * math.sqrt(3.0) / 2.0
+    si n == 8:
+        retour apotheme_oct(a)
+    si n == 12:
+        retour apotheme_dodec(a)
+    retour a / 2.0
 
 
 def tri_arete_x3(x1, y1, x2, y2):
-    dx = x2 - x1
-    dy = y2 - y1
-    lon = math.sqrt(dx * dx + dy * dy)
+    soit dx = x2 - x1
+    soit dy = y2 - y1
+    soit lon = math.sqrt(dx * dx + dy * dy)
     si lon == 0:
         retour (x1 + x2) / 2.0
     h = math.sqrt(3.0) * lon / 2.0
@@ -263,9 +243,9 @@ def tri_arete_x3(x1, y1, x2, y2):
 
 
 def tri_arete_y3(x1, y1, x2, y2):
-    dx = x2 - x1
-    dy = y2 - y1
-    lon = math.sqrt(dx * dx + dy * dy)
+    soit dx = x2 - x1
+    soit dy = y2 - y1
+    soit lon = math.sqrt(dx * dx + dy * dy)
     si lon == 0:
         retour (y1 + y2) / 2.0
     h = math.sqrt(3.0) * lon / 2.0
@@ -273,110 +253,7 @@ def tri_arete_y3(x1, y1, x2, y2):
     retour (y1 + y2) / 2.0 + ny * h
 
 
-# ── K-means (couleur representative) ─────────────────────────
-
-_km_r = []
-_km_g = []
-_km_b = []
-_km_k = 3
-_km_res_r = 0
-_km_res_g = 0
-_km_res_b = 0
-
-
-def km_init(k):
-    global _km_r, _km_g, _km_b, _km_k, _km_res_r, _km_res_g, _km_res_b
-    _km_r = []
-    _km_g = []
-    _km_b = []
-    _km_k = entier(k)
-    _km_res_r = 0
-    _km_res_g = 0
-    _km_res_b = 0
-    retour 0
-
-
-def km_ajouter(r, g, b):
-    global _km_r, _km_g, _km_b
-    _km_r.append(r)
-    _km_g.append(g)
-    _km_b.append(b)
-    retour 0
-
-
-def _dist2(r1, g1, b1, r2, g2, b2):
-    soit dr = r1 - r2
-    soit dg = g1 - g2
-    soit db = b1 - b2
-    retour dr * dr + dg * dg + db * db
-
-
-def km_calculer(max_iter):
-    global _km_res_r, _km_res_g, _km_res_b, _km_k, _km_r, _km_g, _km_b
-    n = len(_km_r)
-    si n == 0:
-        retour 0
-    k = min(_km_k, n)
-    si k <= 0:
-        retour 0
-    soit c_r = [_km_r[min(n - 1, i * n // k)] pour i dans range(k)]
-    soit c_g = [_km_g[min(n - 1, i * n // k)] pour i dans range(k)]
-    soit c_b = [_km_b[min(n - 1, i * n // k)] pour i dans range(k)]
-    soit labels = [0 pour _ dans range(n)]
-    pour _ dans range(entier(max_iter)):
-        soit change = 0
-        pour i dans range(n):
-            soit min_d = _dist2(_km_r[i], _km_g[i], _km_b[i], c_r[0], c_g[0], c_b[0])
-            soit best = 0
-            pour c dans range(1, k):
-                soit d = _dist2(_km_r[i], _km_g[i], _km_b[i], c_r[c], c_g[c], c_b[c])
-                si d < min_d:
-                    min_d = d
-                    best = c
-            si labels[i] != best:
-                labels[i] = best
-                change = 1
-        pour c dans range(k):
-            soit sr = 0.0
-            soit sg = 0.0
-            soit sb = 0.0
-            soit cnt = 0
-            pour i dans range(n):
-                si labels[i] == c:
-                    sr = sr + _km_r[i]
-                    sg = sg + _km_g[i]
-                    sb = sb + _km_b[i]
-                    cnt = cnt + 1
-            si cnt > 0:
-                c_r[c] = sr / cnt
-                c_g[c] = sg / cnt
-                c_b[c] = sb / cnt
-    soit comptes = [0 pour _ dans range(k)]
-    pour i dans range(n):
-        comptes[labels[i]] = comptes[labels[i]] + 1
-    soit dominant = 0
-    pour c dans range(1, k):
-        si comptes[c] > comptes[dominant]:
-            dominant = c
-    _km_res_r = entier(arrondir(c_r[dominant]))
-    _km_res_g = entier(arrondir(c_g[dominant]))
-    _km_res_b = entier(arrondir(c_b[dominant]))
-    retour 0
-
-
-def km_r():
-    retour _km_res_r
-
-
-def km_g():
-    retour _km_res_g
-
-
-def km_b():
-    retour _km_res_b
-
-
-# ── Stockage global des tuiles ────────────────────────────────
+# ── Etat global des tuiles ────────────────────────────────────
 
 _methode_active = 0
 _gen_larg = 0.0
@@ -386,8 +263,6 @@ _compte_tuiles = 0
 _cible_tuile = 2147483647
 _cache_trouve = 0
 _cache_n = 0
-_cache_xs = []
-_cache_ys = []
 _cache_actif = 0
 _cache_x0 = 0.0
 _cache_y0 = 0.0
@@ -414,22 +289,49 @@ _cache_y10 = 0.0
 _cache_x11 = 0.0
 _cache_y11 = 0.0
 
+# Tampon de sortie : [n_sommets, x0, y0, x1, y1, ..., x11, y11] (25 slots)
+_sortie = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-def _coord_vers_entier(valeur):
-    si valeur != valeur:
-        retour 0
-    retour entier(arrondir(valeur * 100.0))
+
+def _ecrire_cache(n, x0=0.0, y0=0.0, x1=0.0, y1=0.0, x2=0.0, y2=0.0, x3=0.0, y3=0.0, x4=0.0, y4=0.0, x5=0.0, y5=0.0, x6=0.0, y6=0.0, x7=0.0, y7=0.0, x8=0.0, y8=0.0, x9=0.0, y9=0.0, x10=0.0, y10=0.0, x11=0.0, y11=0.0):
+    global _cache_trouve, _cache_n
+    global _cache_x0, _cache_y0, _cache_x1, _cache_y1, _cache_x2, _cache_y2, _cache_x3, _cache_y3, _cache_x4, _cache_y4, _cache_x5, _cache_y5, _cache_x6, _cache_y6, _cache_x7, _cache_y7, _cache_x8, _cache_y8, _cache_x9, _cache_y9, _cache_x10, _cache_y10, _cache_x11, _cache_y11
+    _cache_trouve = 1
+    _cache_n = n
+    _cache_x0 = x0
+    _cache_y0 = y0
+    _cache_x1 = x1
+    _cache_y1 = y1
+    _cache_x2 = x2
+    _cache_y2 = y2
+    _cache_x3 = x3
+    _cache_y3 = y3
+    _cache_x4 = x4
+    _cache_y4 = y4
+    _cache_x5 = x5
+    _cache_y5 = y5
+    _cache_x6 = x6
+    _cache_y6 = y6
+    _cache_x7 = x7
+    _cache_y7 = y7
+    _cache_x8 = x8
+    _cache_y8 = y8
+    _cache_x9 = x9
+    _cache_y9 = y9
+    _cache_x10 = x10
+    _cache_y10 = y10
+    _cache_x11 = x11
+    _cache_y11 = y11
+    retour 1
 
 
 def _tuiles_reinit():
-    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys, _cache_actif
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_actif
     global _cache_x0, _cache_y0, _cache_x1, _cache_y1, _cache_x2, _cache_y2, _cache_x3, _cache_y3, _cache_x4, _cache_y4, _cache_x5, _cache_y5, _cache_x6, _cache_y6, _cache_x7, _cache_y7, _cache_x8, _cache_y8, _cache_x9, _cache_y9, _cache_x10, _cache_y10, _cache_x11, _cache_y11
     _compte_tuiles = 0
     _cible_tuile = 2147483647
     _cache_trouve = 0
     _cache_n = 0
-    _cache_xs = []
-    _cache_ys = []
     _cache_actif = 0
     _cache_x0 = 0.0
     _cache_y0 = 0.0
@@ -458,90 +360,10 @@ def _tuiles_reinit():
     retour 0
 
 
-def _ecrire_cache(n, x0=0.0, y0=0.0, x1=0.0, y1=0.0, x2=0.0, y2=0.0, x3=0.0, y3=0.0, x4=0.0, y4=0.0, x5=0.0, y5=0.0, x6=0.0, y6=0.0, x7=0.0, y7=0.0, x8=0.0, y8=0.0, x9=0.0, y9=0.0, x10=0.0, y10=0.0, x11=0.0, y11=0.0):
-    global _cache_trouve, _cache_n, _cache_xs, _cache_ys
-    global _cache_x0, _cache_y0, _cache_x1, _cache_y1, _cache_x2, _cache_y2, _cache_x3, _cache_y3, _cache_x4, _cache_y4, _cache_x5, _cache_y5, _cache_x6, _cache_y6, _cache_x7, _cache_y7, _cache_x8, _cache_y8, _cache_x9, _cache_y9, _cache_x10, _cache_y10, _cache_x11, _cache_y11
-    _cache_trouve = 1
-    _cache_n = n
-    _cache_xs = []
-    _cache_ys = []
-    _cache_x0 = x0
-    _cache_y0 = y0
-    _cache_x1 = x1
-    _cache_y1 = y1
-    _cache_x2 = x2
-    _cache_y2 = y2
-    _cache_x3 = x3
-    _cache_y3 = y3
-    _cache_x4 = x4
-    _cache_y4 = y4
-    _cache_x5 = x5
-    _cache_y5 = y5
-    _cache_x6 = x6
-    _cache_y6 = y6
-    _cache_x7 = x7
-    _cache_y7 = y7
-    _cache_x8 = x8
-    _cache_y8 = y8
-    _cache_x9 = x9
-    _cache_y9 = y9
-    _cache_x10 = x10
-    _cache_y10 = y10
-    _cache_x11 = x11
-    _cache_y11 = y11
-    retour 1
-
-
-def _lire_cache_x(j):
-    si j == 0:
-        retour _cache_x0
-    si j == 1:
-        retour _cache_x1
-    si j == 2:
-        retour _cache_x2
-    si j == 3:
-        retour _cache_x3
-    si j == 4:
-        retour _cache_x4
-    si j == 5:
-        retour _cache_x5
-    si j == 6:
-        retour _cache_x6
-    si j == 7:
-        retour _cache_x7
-    si j == 8:
-        retour _cache_x8
-    si j == 9:
-        retour _cache_x9
-    si j == 10:
-        retour _cache_x10
-    retour _cache_x11
-
-
-def _lire_cache_y(j):
-    si j == 0:
-        retour _cache_y0
-    si j == 1:
-        retour _cache_y1
-    si j == 2:
-        retour _cache_y2
-    si j == 3:
-        retour _cache_y3
-    si j == 4:
-        retour _cache_y4
-    si j == 5:
-        retour _cache_y5
-    si j == 6:
-        retour _cache_y6
-    si j == 7:
-        retour _cache_y7
-    si j == 8:
-        retour _cache_y8
-    si j == 9:
-        retour _cache_y9
-    si j == 10:
-        retour _cache_y10
-    retour _cache_y11
+def _coord_vers_entier(valeur):
+    si valeur != valeur:
+        retour 0
+    retour entier(arrondir(valeur * 100.0))
 
 
 def _hors_champ(min_x, max_x, min_y, max_y, larg, haut):
@@ -617,10 +439,6 @@ def _compter_carres(larg, haut, a):
     retour cols * rangs
 
 
-def _mettre_tuile_en_cache(n, x0, y0, x1, y1, x2, y2, x3=0.0, y3=0.0, x4=0.0, y4=0.0, x5=0.0, y5=0.0, x6=0.0, y6=0.0, x7=0.0, y7=0.0, x8=0.0, y8=0.0, x9=0.0, y9=0.0, x10=0.0, y10=0.0, x11=0.0, y11=0.0):
-    retour _ecrire_cache(n, x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6, x7, y7, x8, y8, x9, y9, x10, y10, x11, y11)
-
-
 def _ajouter_tuile_3_direct(x0, y0, x1, y1, x2, y2, larg, haut):
     global _compte_tuiles, _cible_tuile, _cache_actif
     soit min_x = min(min(x0, x1), x2)
@@ -691,29 +509,8 @@ def _ajouter_tuile_12_direct(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6,
     retour 1
 
 
-def _ajouter_tuile_4(x0, y0, x1, y1, x2, y2, x3, y3, larg, haut):
-    soit min_x = min(min(x0, x1), min(x2, x3))
-    soit max_x = max(max(x0, x1), max(x2, x3))
-    soit min_y = min(min(y0, y1), min(y2, y3))
-    soit max_y = max(max(y0, y1), max(y2, y3))
-    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
-        retour 0
-    retour 1
-
-
-def _ajouter_tuile_6(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, larg, haut):
-    soit min_x = min(min(min(x0, x1), min(x2, x3)), min(x4, x5))
-    soit max_x = max(max(max(x0, x1), max(x2, x3)), max(x4, x5))
-    soit min_y = min(min(min(y0, y1), min(y2, y3)), min(y4, y5))
-    soit max_y = max(max(max(y0, y1), max(y2, y3)), max(y4, y5))
-    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
-        retour 0
-    retour 1
-
-
-
 def _ajouter_poly(xs, ys, larg, haut):
-    global _compte_tuiles, _cible_tuile, _cache_actif, _cache_trouve, _cache_n, _cache_xs, _cache_ys
+    global _compte_tuiles, _cible_tuile, _cache_actif, _cache_trouve, _cache_n
     global _cache_x0, _cache_y0, _cache_x1, _cache_y1, _cache_x2, _cache_y2, _cache_x3, _cache_y3, _cache_x4, _cache_y4, _cache_x5, _cache_y5, _cache_x6, _cache_y6, _cache_x7, _cache_y7, _cache_x8, _cache_y8, _cache_x9, _cache_y9, _cache_x10, _cache_y10, _cache_x11, _cache_y11
     n = len(xs)
     si n == 0:
@@ -745,8 +542,6 @@ def _ajouter_poly(xs, ys, larg, haut):
     si _cache_actif == 1 et _cible_tuile == _compte_tuiles:
         _cache_trouve = 1
         _cache_n = n
-        _cache_xs = []
-        _cache_ys = []
         _cache_x0 = 0.0
         _cache_y0 = 0.0
         _cache_x1 = 0.0
@@ -991,7 +786,6 @@ def _gen_rhombitrihex(larg, haut, a):
             soit h5y = sommet_hex_y(x, y, a, 5)
             _ajouter_tuile_6_direct(h0x, h0y, h1x, h1y, h2x, h2y, h3x, h3y, h4x, h4y, h5x, h5y, larg, haut)
             pour i dans range(6):
-                i2 = (i + 1) % 6
                 p1x = h0x
                 p1y = h0y
                 p2x = h1x
@@ -1135,7 +929,6 @@ def _gen_grand_rhombitrihex(larg, haut, a):
             soit d11y = sommet_dodec_y(x, y, a, 11)
             _ajouter_poly([d0x, d1x, d2x, d3x, d4x, d5x, d6x, d7x, d8x, d9x, d10x, d11x], [d0y, d1y, d2y, d3y, d4y, d5y, d6y, d7y, d8y, d9y, d10y, d11y], larg, haut)
             pour i dans range(12):
-                i2 = (i + 1) % 12
                 p1x = d0x
                 p1y = d0y
                 p2x = d1x
@@ -1315,7 +1108,7 @@ def _gen_hex_tronque(larg, haut, a):
     retour 0
 
 
-# ── Dispatch et acces aux tuiles ──────────────────────────────
+# ── Dispatch ──────────────────────────────────────────────────
 
 def generer_tuiles(larg, haut, a, methode):
     global _methode_active, _gen_larg, _gen_haut, _gen_a
@@ -1355,14 +1148,11 @@ def generer_tuiles(larg, haut, a, methode):
 
 
 def _charger_tuile_cache(i):
-    global _cache_n, _cache_xs, _cache_ys
-    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_actif
+    global _cache_n, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_actif
     _compte_tuiles = 0
     _cible_tuile = entier(i)
     _cache_trouve = 0
     _cache_n = 0
-    _cache_xs = []
-    _cache_ys = []
     _cache_actif = 1
     si _methode_active == 2:
         _gen_triangle(_gen_larg, _gen_haut, _gen_a)
@@ -1384,177 +1174,83 @@ def _charger_tuile_cache(i):
         _gen_hex_tronque(_gen_larg, _gen_haut, _gen_a)
 
 
-def tuile_n_sommets(i):
-    global _methode_active, _cache_n
-    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_xs, _cache_ys, _cache_actif
+# ── Interface de lecture par tuile ────────────────────────────
+# Remplace les 25 appels FFI par tuile (tuile_n_sommets + tuile_sommet_x/y).
+# charger_tuile(i) charge les sommets dans _sortie et retourne n_sommets.
+# sortie_ptr() renvoie le pointeur memoire de _sortie pour lecture DataView JS.
+
+def charger_tuile(i):
+    global _sortie
     si _methode_active == 0:
+        soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
+        soit cy = _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
+        _sortie[0] = 6.0
+        _sortie[1] = sommet_hex_x(cx, cy, _gen_a, 0)
+        _sortie[2] = sommet_hex_y(cx, cy, _gen_a, 0)
+        _sortie[3] = sommet_hex_x(cx, cy, _gen_a, 1)
+        _sortie[4] = sommet_hex_y(cx, cy, _gen_a, 1)
+        _sortie[5] = sommet_hex_x(cx, cy, _gen_a, 2)
+        _sortie[6] = sommet_hex_y(cx, cy, _gen_a, 2)
+        _sortie[7] = sommet_hex_x(cx, cy, _gen_a, 3)
+        _sortie[8] = sommet_hex_y(cx, cy, _gen_a, 3)
+        _sortie[9] = sommet_hex_x(cx, cy, _gen_a, 4)
+        _sortie[10] = sommet_hex_y(cx, cy, _gen_a, 4)
+        _sortie[11] = sommet_hex_x(cx, cy, _gen_a, 5)
+        _sortie[12] = sommet_hex_y(cx, cy, _gen_a, 5)
         retour 6
     si _methode_active == 1:
+        soit cols = entier(math.ceil(_gen_larg / _gen_a))
+        soit col = entier(i) % cols
+        soit rang = entier(i) // cols
+        soit x = col * _gen_a
+        soit x2 = min(_gen_larg, x + _gen_a)
+        soit y = rang * _gen_a
+        soit y2 = min(_gen_haut, y + _gen_a)
+        _sortie[0] = 4.0
+        _sortie[1] = x
+        _sortie[2] = y
+        _sortie[3] = x2
+        _sortie[4] = y
+        _sortie[5] = x2
+        _sortie[6] = y2
+        _sortie[7] = x
+        _sortie[8] = y2
         retour 4
     _charger_tuile_cache(i)
-    si _cache_trouve == 1:
-        retour _cache_n
-    retour 0
-
-
-def tuile_sommet_x(i, j):
-    global _methode_active, _gen_larg, _gen_haut, _gen_a, _cache_xs
-    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_ys, _cache_actif
-    global _cache_x0, _cache_x1, _cache_x2, _cache_x3, _cache_x4, _cache_x5, _cache_x6, _cache_x7, _cache_x8, _cache_x9, _cache_x10, _cache_x11
-    si _methode_active == 0:
-        soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
-        soit cy = _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
-        retour sommet_hex_x(cx, cy, _gen_a, entier(j))
-    si _methode_active == 1:
-        soit cols = entier(math.ceil(_gen_larg / _gen_a))
-        soit col = entier(i) % cols
-        soit x = col * _gen_a
-        soit x2 = min(_gen_larg, x + _gen_a)
-        si entier(j) == 0:
-            retour x
-        si entier(j) == 1:
-            retour x2
-        si entier(j) == 2:
-            retour x2
-        retour x
-    si _cache_trouve != 1 ou _cible_tuile != entier(i):
-        _charger_tuile_cache(i)
-    si _cache_trouve == 1:
-        retour _lire_cache_x(entier(j))
-    retour 0.0
-
-
-def tuile_sommet_y(i, j):
-    global _methode_active, _gen_larg, _gen_haut, _gen_a, _cache_ys
-    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_actif
-    global _cache_y0, _cache_y1, _cache_y2, _cache_y3, _cache_y4, _cache_y5, _cache_y6, _cache_y7, _cache_y8, _cache_y9, _cache_y10, _cache_y11
-    si _methode_active == 0:
-        soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
-        soit cy = _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
-        retour sommet_hex_y(cx, cy, _gen_a, entier(j))
-    si _methode_active == 1:
-        soit cols = entier(math.ceil(_gen_larg / _gen_a))
-        soit rang = entier(i) // cols
-        soit y = rang * _gen_a
-        soit y2 = min(_gen_haut, y + _gen_a)
-        si entier(j) == 0:
-            retour y
-        si entier(j) == 1:
-            retour y
-        si entier(j) == 2:
-            retour y2
-        retour y2
-    si _cache_trouve != 1 ou _cible_tuile != entier(i):
-        _charger_tuile_cache(i)
-    si _cache_trouve == 1:
-        retour _lire_cache_y(entier(j))
-    retour 0.0
-
-
-def tuile_centre_x(i):
-    si _methode_active == 0:
-        retour _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
-    si _methode_active == 1:
-        soit cols = entier(math.ceil(_gen_larg / _gen_a))
-        soit col = entier(i) % cols
-        soit x = col * _gen_a
-        soit x2 = min(_gen_larg, x + _gen_a)
-        retour (x + x2) / 2.0
-    si _cache_trouve != 1 ou _cible_tuile != entier(i):
-        _charger_tuile_cache(i)
-    si _cache_trouve != 1 ou _cache_n <= 0:
-        retour 0.0
-    soit sx = 0.0
-    pour j dans range(_cache_n):
-        sx = sx + _lire_cache_x(j)
-    retour sx / _cache_n
-
-
-def tuile_centre_y(i):
-    si _methode_active == 0:
-        retour _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
-    si _methode_active == 1:
-        soit cols = entier(math.ceil(_gen_larg / _gen_a))
-        soit rang = entier(i) // cols
-        soit y = rang * _gen_a
-        soit y2 = min(_gen_haut, y + _gen_a)
-        retour (y + y2) / 2.0
-    si _cache_trouve != 1 ou _cible_tuile != entier(i):
-        _charger_tuile_cache(i)
-    si _cache_trouve != 1 ou _cache_n <= 0:
-        retour 0.0
-    soit sy = 0.0
-    pour j dans range(_cache_n):
-        sy = sy + _lire_cache_y(j)
-    retour sy / _cache_n
-
-
-def tuile_boite_min_x(i):
-    soit n = tuile_n_sommets(i)
-    si n <= 0:
-        retour 0.0
-    soit min_x = tuile_sommet_x(i, 0)
-    pour j dans range(1, n):
-        soit x = tuile_sommet_x(i, j)
-        si x < min_x:
-            min_x = x
-    retour min_x
-
-
-def tuile_boite_max_x(i):
-    soit n = tuile_n_sommets(i)
-    si n <= 0:
-        retour 0.0
-    soit max_x = tuile_sommet_x(i, 0)
-    pour j dans range(1, n):
-        soit x = tuile_sommet_x(i, j)
-        si x > max_x:
-            max_x = x
-    retour max_x
-
-
-def tuile_boite_min_y(i):
-    soit n = tuile_n_sommets(i)
-    si n <= 0:
-        retour 0.0
-    soit min_y = tuile_sommet_y(i, 0)
-    pour j dans range(1, n):
-        soit y = tuile_sommet_y(i, j)
-        si y < min_y:
-            min_y = y
-    retour min_y
-
-
-def tuile_boite_max_y(i):
-    soit n = tuile_n_sommets(i)
-    si n <= 0:
-        retour 0.0
-    soit max_y = tuile_sommet_y(i, 0)
-    pour j dans range(1, n):
-        soit y = tuile_sommet_y(i, j)
-        si y > max_y:
-            max_y = y
-    retour max_y
-
-
-def tuile_contient_point(i, px, py):
-    soit n = tuile_n_sommets(i)
-    si n < 3:
+    si _cache_trouve != 1:
+        _sortie[0] = 0.0
         retour 0
-    soit dedans = 0
-    soit j = n - 1
-    pour i2 dans range(n):
-        soit xi = tuile_sommet_x(i, i2)
-        soit yi = tuile_sommet_y(i, i2)
-        soit xj = tuile_sommet_x(i, j)
-        soit yj = tuile_sommet_y(i, j)
-        si ((yi > py) != (yj > py)) et (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi):
-            si dedans == 0:
-                dedans = 1
-            sinon:
-                dedans = 0
-        j = i2
-    retour dedans
+    n = entier(_cache_n)
+    _sortie[0] = n
+    _sortie[1] = _cache_x0
+    _sortie[2] = _cache_y0
+    _sortie[3] = _cache_x1
+    _sortie[4] = _cache_y1
+    _sortie[5] = _cache_x2
+    _sortie[6] = _cache_y2
+    _sortie[7] = _cache_x3
+    _sortie[8] = _cache_y3
+    _sortie[9] = _cache_x4
+    _sortie[10] = _cache_y4
+    _sortie[11] = _cache_x5
+    _sortie[12] = _cache_y5
+    _sortie[13] = _cache_x6
+    _sortie[14] = _cache_y6
+    _sortie[15] = _cache_x7
+    _sortie[16] = _cache_y7
+    _sortie[17] = _cache_x8
+    _sortie[18] = _cache_y8
+    _sortie[19] = _cache_x9
+    _sortie[20] = _cache_y9
+    _sortie[21] = _cache_x10
+    _sortie[22] = _cache_y10
+    _sortie[23] = _cache_x11
+    _sortie[24] = _cache_y11
+    retour n
+
+
+def sortie_ptr():
+    retour _sortie
 
 
 # ── Codes de methode ──────────────────────────────────────────
