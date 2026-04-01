@@ -1,13 +1,14 @@
 const MAX_DIM = 1200;
-const MAX_TUILES_WASM = 8000;
+// Maximum tiles the WASM module will store (matches _MAX_TUILES in hexagonify_wasm.ml).
+const MAX_TUILES_WASM = 2000;
 
-// Approximate tile density (tiles per unit area / cote^2) for each tiling method.
-// Used to estimate the minimum safe cote before calling generer_tuiles.
+// Tile density per (cote² / image area) for each tiling method, used to warn
+// the user when the requested tile size would exceed the WASM tile cap.
 const DENSITE_METHODE = {
-  hex: 0.40, square: 1.0, triangle: 2.35,
-  trihex: 2.70, snub_trihex: 4.2, triangulaire_elongue: 1.65,
-  carre_snub: 1.25, rhombitrihex: 2.05, carre_tronque: 0.28,
-  grand_rhombitrihex: 0.38, hex_tronque: 0.60,
+  hex: 0.50, square: 1.0, triangle: 2.50,
+  trihex: 1.0, snub_trihex: 2.50, triangulaire_elongue: 1.70,
+  carre_snub: 1.30, rhombitrihex: 1.0, carre_tronque: 0.30,
+  grand_rhombitrihex: 0.10, hex_tronque: 0.40,
 };
 
 function coteSuretePourImage(w, h, methode) {
@@ -322,18 +323,9 @@ async function rendreSortie() {
     const coteDemande = cote;
     const coteMin = coteSuretePourImage(w, h, state.method);
     if (cote < coteMin) cote = coteMin;
-    let nTuiles;
-    for (let tentative = 0; tentative < 6; tentative++) {
-      try {
-        nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
-        break;
-      } catch (err) {
-        if (tentative >= 5) throw err;
-        cote = Math.ceil(cote * 1.5);
-      }
-    }
+    const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
     if (cote !== coteDemande) {
-      status.textContent = `Taille ajustee a ${cote}px (limite memoire WASM).`;
+      status.textContent = `Taille ajustee a ${cote}px (limite du mode ${state.method}).`;
     }
     if (cote !== state.side) {
       state.side = cote;

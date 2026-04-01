@@ -55,6 +55,7 @@ déf generer_wat_et_wasm(source):
     soit wasmtime         = importlib.import_module("wasmtime")
     soit programme        = charger_programme(source)
     soit texte_wat        = WATCodeGenerator().generate(programme)
+    texte_wat = texte_wat.replace('(memory (export "memory") 4)', '(memory (export "memory") 16)')
     soit octets_wasm      = wasmtime.wat2wasm(texte_wat)
     retour [texte_wat, octets_wasm]
 
