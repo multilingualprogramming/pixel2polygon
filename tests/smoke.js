@@ -351,6 +351,57 @@ async function testSampleImagesProduceTilesInWasm() {
   }
 }
 
+async function testWasmTileGeometryStaysBounded() {
+  const wasm = await instantiateProjectWasm();
+  const width = 240;
+  const height = 180;
+  const side = 24;
+  const pad = side * 6;
+  const methods = [
+    ["hex", 0],
+    ["square", 1],
+    ["triangle", 2],
+    ["trihex", 3],
+    ["snub_trihex", 4],
+    ["triangulaire_elongue", 5],
+    ["carre_snub", 6],
+    ["rhombitrihex", 7],
+    ["carre_tronque", 8],
+    ["grand_rhombitrihex", 9],
+    ["hex_tronque", 10],
+  ];
+
+  for (const [name, code] of methods) {
+    const count = Number(wasm.generer_tuiles(width, height, side, code));
+    assert.ok(count > 0, `expected tiles for bounded-geometry check on ${name}`);
+
+    const sampleIndices = [0, Math.floor(count / 2), Math.max(0, count - 1)];
+    for (const tileIndex of sampleIndices) {
+      const vertices = Number(wasm.tuile_n_sommets(tileIndex));
+      assert.ok(vertices >= 3, `expected polygon vertex count for ${name} tile ${tileIndex}`);
+
+      const points = [];
+      for (let i = 0; i < vertices; i += 1) {
+        const x = Number(wasm.tuile_sommet_x(tileIndex, i));
+        const y = Number(wasm.tuile_sommet_y(tileIndex, i));
+        assert.ok(Number.isFinite(x), `expected finite x for ${name} tile ${tileIndex}`);
+        assert.ok(Number.isFinite(y), `expected finite y for ${name} tile ${tileIndex}`);
+        assert.ok(x >= -pad && x <= width + pad, `expected bounded x for ${name} tile ${tileIndex}, got ${x}`);
+        assert.ok(y >= -pad && y <= height + pad, `expected bounded y for ${name} tile ${tileIndex}, got ${y}`);
+        points.push([x, y]);
+      }
+
+      for (let i = 0; i < points.length; i += 1) {
+        const [x1, y1] = points[i];
+        const [x2, y2] = points[(i + 1) % points.length];
+        const edge = Math.hypot(x2 - x1, y2 - y1);
+        assert.ok(edge > side * 0.35, `expected non-degenerate edge for ${name} tile ${tileIndex}, got ${edge}`);
+        assert.ok(edge < side * 2.5, `expected bounded edge for ${name} tile ${tileIndex}, got ${edge}`);
+      }
+    }
+  }
+}
+
 async function testRenderSanitizesTileSizeBeforeWasm() {
   const { elements, api } = buildHarness();
   const sourceCanvas = elements.get("source-canvas");
@@ -492,6 +543,7 @@ async function run() {
   testKMeansSamplingStaysUnderWasmLimit();
   testKMeansFallsBackToMeanWhenWasmThrows();
   await testSampleImagesProduceTilesInWasm();
+  await testWasmTileGeometryStaysBounded();
   await testRenderSanitizesTileSizeBeforeWasm();
   await testRenderSkipsInvalidTilesWithoutCrashing();
   await testAllTileCategoriesRenderWithWasm();
