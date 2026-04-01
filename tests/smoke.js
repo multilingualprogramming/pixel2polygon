@@ -323,6 +323,15 @@ async function testSampleImagesProduceTilesInWasm() {
   const methods = [
     ["hex", 0],
     ["square", 1],
+    ["triangle", 2],
+    ["trihex", 3],
+    ["snub_trihex", 4],
+    ["triangulaire_elongue", 5],
+    ["carre_snub", 6],
+    ["rhombitrihex", 7],
+    ["carre_tronque", 8],
+    ["grand_rhombitrihex", 9],
+    ["hex_tronque", 10],
   ];
   const images = [
     ["flower.jpg", FLOWER_JPG, { width: 640, height: 480 }],
@@ -397,33 +406,45 @@ async function testRenderSkipsInvalidTilesWithoutCrashing() {
   assert.strictEqual(download.disabled, false);
 }
 
-async function testRenderFallsBackWhenSelectedWasmMethodThrows() {
-  const { elements, api } = buildHarness();
-  const sourceCanvas = elements.get("source-canvas");
-  const status = elements.get("wasm-status");
-  sourceCanvas.width = 10;
-  sourceCanvas.height = 10;
+async function testAllTileCategoriesRenderWithWasm() {
+  const methods = [
+    "hex", "square", "triangle",
+    "trihex", "snub_trihex", "triangulaire_elongue",
+    "carre_snub", "rhombitrihex", "carre_tronque",
+    "grand_rhombitrihex", "hex_tronque",
+  ];
 
-  api.state.method = "triangle";
-  const calls = [];
-  api.setWasm({
-    couleur_moyenne(total, count) { return Math.round(total / count); },
-    km_init() {}, km_ajouter() {}, km_calculer() {},
-    km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
-    generer_tuiles(larg, haut, a, code) {
-      calls.push(code);
-      if (code === api.METHODES.triangle) throw new Error("index out of bounds");
-      assert.strictEqual(code, api.METHODES.hex);
-      return 1;
-    },
-    tuile_n_sommets() { return 4; },
-    tuile_sommet_x(i, j) { return [0, 10, 10, 0][j]; },
-    tuile_sommet_y(i, j) { return [0, 0, 10, 10][j]; },
-  });
+  for (const method of methods) {
+    const { elements, api } = buildHarness();
+    const sourceCanvas = elements.get("source-canvas");
+    const status = elements.get("wasm-status");
+    const download = elements.get("btn-download");
+    sourceCanvas.width = 48;
+    sourceCanvas.height = 36;
+    api.state.method = method;
+    api.state.side = 12;
 
-  await api.rendreSortie();
-  assert.deepStrictEqual(calls, [api.METHODES.triangle, api.METHODES.hex]);
-  assert.match(status.textContent, /repli WASM vers hex/);
+    api.setWasm({
+      couleur_moyenne(total, count) { return Math.round(total / count); },
+      km_init() {}, km_ajouter() {}, km_calculer() {},
+      km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
+      generer_tuiles(larg, haut, a, code) {
+        assert.strictEqual(larg, 48);
+        assert.strictEqual(haut, 36);
+        assert.strictEqual(a, 12);
+        assert.strictEqual(code, api.METHODES[method]);
+        return 1;
+      },
+      tuile_n_sommets() { return 4; },
+      tuile_sommet_x(i, j) { return [0, 48, 48, 0][j]; },
+      tuile_sommet_y(i, j) { return [0, 0, 36, 36][j]; },
+    });
+
+    await api.rendreSortie();
+    assert.match(status.textContent, new RegExp(`mode ${method}`));
+    assert.doesNotMatch(status.textContent, /echoue/i);
+    assert.strictEqual(download.disabled, false, `expected download enabled for ${method}`);
+  }
 }
 
 function testKMeansSamplingStaysUnderWasmLimit() {
@@ -473,7 +494,7 @@ async function run() {
   await testSampleImagesProduceTilesInWasm();
   await testRenderSanitizesTileSizeBeforeWasm();
   await testRenderSkipsInvalidTilesWithoutCrashing();
-  await testRenderFallsBackWhenSelectedWasmMethodThrows();
+  await testAllTileCategoriesRenderWithWasm();
   console.log("Smoke tests passed.");
 }
 

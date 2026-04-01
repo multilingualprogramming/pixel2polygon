@@ -45,8 +45,6 @@ const EXPORTS_CODES_METHODES = {
   hex_tronque: "methode_hex_tronque",
 };
 
-const METHODES_WASM_REPLI = ["hex", "square"];
-
 let wasm = null;
 let loadedImage = null;
 let renderToken = 0;
@@ -281,24 +279,12 @@ function entierSecurise(valeur, secours, minimum = null, maximum = null) {
 }
 
 function genererTuilesAvecRepli(w, h, cote, methodeDemandee) {
-  const essais = [methodeDemandee, ...METHODES_WASM_REPLI.filter((nom) => nom !== methodeDemandee)];
-  let derniereErreur = null;
-
-  for (const nom of essais) {
-    const code = entierSecurise(METHODES[nom], METHODES.hex, 0);
-    try {
-      const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
-      if (!Number.isInteger(nTuiles) || nTuiles < 0) {
-        throw new Error(`Nombre de tuiles invalide renvoye par WASM: ${nTuiles}`);
-      }
-      return { nTuiles, methodeUtilisee: nom, methodeDemandee };
-    } catch (err) {
-      derniereErreur = err;
-      console.warn(`[pixel2polygon] Mode ${nom} indisponible dans le WASM :`, err);
-    }
+  const code = entierSecurise(METHODES[methodeDemandee], METHODES.hex, 0);
+  const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
+  if (!Number.isInteger(nTuiles) || nTuiles < 0) {
+    throw new Error(`Nombre de tuiles invalide renvoye par WASM: ${nTuiles}`);
   }
-
-  throw derniereErreur ?? new Error("Aucune methode de rendu WASM disponible.");
+  return { nTuiles, methodeUtilisee: methodeDemandee };
 }
 
 function afficherSource(imgEl) {
@@ -371,9 +357,7 @@ async function rendreSortie() {
       if (couleur) dessinerTuile(ctx, sommets, couleur, state.outlineWidth, cssContour);
     }
 
-    const libelleMode = methodeUtilisee === state.method
-      ? `mode ${state.method}`
-      : `mode ${state.method} (repli WASM vers ${methodeUtilisee})`;
+    const libelleMode = `mode ${methodeUtilisee}`;
     status.textContent = tuilesInvalides > 0
       ? `Rendu termine : ${nTuiles - tuilesInvalides}/${nTuiles} tuiles valides pour le ${libelleMode}.`
       : `Rendu termine : ${nTuiles} tuiles pour le ${libelleMode}.`;

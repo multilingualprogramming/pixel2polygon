@@ -249,6 +249,12 @@ _methode_active = 0
 _gen_larg = 0.0
 _gen_haut = 0.0
 _gen_a = 0.0
+_compte_tuiles = 0
+_cible_tuile = 2147483647
+_cache_trouve = 0
+_cache_n = 0
+_cache_xs = []
+_cache_ys = []
 
 
 déf _coord_vers_entier(valeur):
@@ -260,6 +266,7 @@ déf _coord_vers_entier(valeur):
 déf _tuiles_reinit():
     global _tuiles_xs, _tuiles_ys, _tuiles_off, _tuiles_n
     global _vus_n, _vus_cx, _vus_cy
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys
     _tuiles_xs = []
     _tuiles_ys = []
     _tuiles_off = []
@@ -267,6 +274,12 @@ déf _tuiles_reinit():
     _vus_n = []
     _vus_cx = []
     _vus_cy = []
+    _compte_tuiles = 0
+    _cible_tuile = 2147483647
+    _cache_trouve = 0
+    _cache_n = 0
+    _cache_xs = []
+    _cache_ys = []
     retour 0
 
 
@@ -343,6 +356,202 @@ déf _compter_carres(larg, haut, a):
     retour cols * rangs
 
 
+déf _mettre_tuile_en_cache(n, x0, y0, x1, y1, x2, y2, x3=0.0, y3=0.0, x4=0.0, y4=0.0, x5=0.0, y5=0.0, x6=0.0, y6=0.0, x7=0.0, y7=0.0, x8=0.0, y8=0.0, x9=0.0, y9=0.0, x10=0.0, y10=0.0, x11=0.0, y11=0.0):
+    global _cache_trouve, _cache_n, _cache_xs, _cache_ys
+    _cache_trouve = 1
+    _cache_n = n
+    _cache_xs = []
+    _cache_ys = []
+    si n >= 1:
+        _cache_xs.append(_coord_vers_entier(x0))
+        _cache_ys.append(_coord_vers_entier(y0))
+    si n >= 2:
+        _cache_xs.append(_coord_vers_entier(x1))
+        _cache_ys.append(_coord_vers_entier(y1))
+    si n >= 3:
+        _cache_xs.append(_coord_vers_entier(x2))
+        _cache_ys.append(_coord_vers_entier(y2))
+    si n >= 4:
+        _cache_xs.append(_coord_vers_entier(x3))
+        _cache_ys.append(_coord_vers_entier(y3))
+    si n >= 5:
+        _cache_xs.append(_coord_vers_entier(x4))
+        _cache_ys.append(_coord_vers_entier(y4))
+    si n >= 6:
+        _cache_xs.append(_coord_vers_entier(x5))
+        _cache_ys.append(_coord_vers_entier(y5))
+    si n >= 7:
+        _cache_xs.append(_coord_vers_entier(x6))
+        _cache_ys.append(_coord_vers_entier(y6))
+    si n >= 8:
+        _cache_xs.append(_coord_vers_entier(x7))
+        _cache_ys.append(_coord_vers_entier(y7))
+    si n >= 9:
+        _cache_xs.append(_coord_vers_entier(x8))
+        _cache_ys.append(_coord_vers_entier(y8))
+    si n >= 10:
+        _cache_xs.append(_coord_vers_entier(x9))
+        _cache_ys.append(_coord_vers_entier(y9))
+    si n >= 11:
+        _cache_xs.append(_coord_vers_entier(x10))
+        _cache_ys.append(_coord_vers_entier(y10))
+    si n >= 12:
+        _cache_xs.append(_coord_vers_entier(x11))
+        _cache_ys.append(_coord_vers_entier(y11))
+    retour 1
+
+
+déf _ajouter_tuile_3_direct(x0, y0, x1, y1, x2, y2, larg, haut):
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys
+    soit min_x = min(min(x0, x1), x2)
+    soit max_x = max(max(x0, x1), x2)
+    soit min_y = min(min(y0, y1), y2)
+    soit max_y = max(max(y0, y1), y2)
+    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
+        retour 0
+    si _cible_tuile == _compte_tuiles:
+        _cache_trouve = 1
+        _cache_n = 3
+        _cache_xs = []
+        _cache_ys = []
+        _cache_xs.append(_coord_vers_entier(x0))
+        _cache_ys.append(_coord_vers_entier(y0))
+        _cache_xs.append(_coord_vers_entier(x1))
+        _cache_ys.append(_coord_vers_entier(y1))
+        _cache_xs.append(_coord_vers_entier(x2))
+        _cache_ys.append(_coord_vers_entier(y2))
+    _compte_tuiles = _compte_tuiles + 1
+    retour 1
+
+
+déf _ajouter_tuile_4_direct(x0, y0, x1, y1, x2, y2, x3, y3, larg, haut):
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys
+    soit min_x = min(min(x0, x1), min(x2, x3))
+    soit max_x = max(max(x0, x1), max(x2, x3))
+    soit min_y = min(min(y0, y1), min(y2, y3))
+    soit max_y = max(max(y0, y1), max(y2, y3))
+    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
+        retour 0
+    si _cible_tuile == _compte_tuiles:
+        _cache_trouve = 1
+        _cache_n = 4
+        _cache_xs = []
+        _cache_ys = []
+        _cache_xs.append(_coord_vers_entier(x0))
+        _cache_ys.append(_coord_vers_entier(y0))
+        _cache_xs.append(_coord_vers_entier(x1))
+        _cache_ys.append(_coord_vers_entier(y1))
+        _cache_xs.append(_coord_vers_entier(x2))
+        _cache_ys.append(_coord_vers_entier(y2))
+        _cache_xs.append(_coord_vers_entier(x3))
+        _cache_ys.append(_coord_vers_entier(y3))
+    _compte_tuiles = _compte_tuiles + 1
+    retour 1
+
+
+déf _ajouter_tuile_6_direct(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, larg, haut):
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys
+    soit min_x = min(min(min(x0, x1), min(x2, x3)), min(x4, x5))
+    soit max_x = max(max(max(x0, x1), max(x2, x3)), max(x4, x5))
+    soit min_y = min(min(min(y0, y1), min(y2, y3)), min(y4, y5))
+    soit max_y = max(max(max(y0, y1), max(y2, y3)), max(y4, y5))
+    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
+        retour 0
+    si _cible_tuile == _compte_tuiles:
+        _cache_trouve = 1
+        _cache_n = 6
+        _cache_xs = []
+        _cache_ys = []
+        _cache_xs.append(_coord_vers_entier(x0))
+        _cache_ys.append(_coord_vers_entier(y0))
+        _cache_xs.append(_coord_vers_entier(x1))
+        _cache_ys.append(_coord_vers_entier(y1))
+        _cache_xs.append(_coord_vers_entier(x2))
+        _cache_ys.append(_coord_vers_entier(y2))
+        _cache_xs.append(_coord_vers_entier(x3))
+        _cache_ys.append(_coord_vers_entier(y3))
+        _cache_xs.append(_coord_vers_entier(x4))
+        _cache_ys.append(_coord_vers_entier(y4))
+        _cache_xs.append(_coord_vers_entier(x5))
+        _cache_ys.append(_coord_vers_entier(y5))
+    _compte_tuiles = _compte_tuiles + 1
+    retour 1
+
+
+déf _ajouter_tuile_8_direct(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6, x7, y7, larg, haut):
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys
+    soit min_x = min(min(min(x0, x1), min(x2, x3)), min(min(x4, x5), min(x6, x7)))
+    soit max_x = max(max(max(x0, x1), max(x2, x3)), max(max(x4, x5), max(x6, x7)))
+    soit min_y = min(min(min(y0, y1), min(y2, y3)), min(min(y4, y5), min(y6, y7)))
+    soit max_y = max(max(max(y0, y1), max(y2, y3)), max(max(y4, y5), max(y6, y7)))
+    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
+        retour 0
+    si _cible_tuile == _compte_tuiles:
+        _cache_trouve = 1
+        _cache_n = 8
+        _cache_xs = []
+        _cache_ys = []
+        _cache_xs.append(_coord_vers_entier(x0))
+        _cache_ys.append(_coord_vers_entier(y0))
+        _cache_xs.append(_coord_vers_entier(x1))
+        _cache_ys.append(_coord_vers_entier(y1))
+        _cache_xs.append(_coord_vers_entier(x2))
+        _cache_ys.append(_coord_vers_entier(y2))
+        _cache_xs.append(_coord_vers_entier(x3))
+        _cache_ys.append(_coord_vers_entier(y3))
+        _cache_xs.append(_coord_vers_entier(x4))
+        _cache_ys.append(_coord_vers_entier(y4))
+        _cache_xs.append(_coord_vers_entier(x5))
+        _cache_ys.append(_coord_vers_entier(y5))
+        _cache_xs.append(_coord_vers_entier(x6))
+        _cache_ys.append(_coord_vers_entier(y6))
+        _cache_xs.append(_coord_vers_entier(x7))
+        _cache_ys.append(_coord_vers_entier(y7))
+    _compte_tuiles = _compte_tuiles + 1
+    retour 1
+
+
+déf _ajouter_tuile_12_direct(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6, x7, y7, x8, y8, x9, y9, x10, y10, x11, y11, larg, haut):
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys
+    soit min_x = min(min(min(x0, x1), min(x2, x3)), min(min(x4, x5), min(min(x6, x7), min(min(x8, x9), min(x10, x11)))))
+    soit max_x = max(max(max(x0, x1), max(x2, x3)), max(max(x4, x5), max(max(x6, x7), max(max(x8, x9), max(x10, x11)))))
+    soit min_y = min(min(min(y0, y1), min(y2, y3)), min(min(y4, y5), min(min(y6, y7), min(min(y8, y9), min(y10, y11)))))
+    soit max_y = max(max(max(y0, y1), max(y2, y3)), max(max(y4, y5), max(max(y6, y7), max(max(y8, y9), max(y10, y11)))))
+    si _hors_champ(min_x, max_x, min_y, max_y, larg, haut) == 1:
+        retour 0
+    si _cible_tuile == _compte_tuiles:
+        _cache_trouve = 1
+        _cache_n = 12
+        _cache_xs = []
+        _cache_ys = []
+        _cache_xs.append(_coord_vers_entier(x0))
+        _cache_ys.append(_coord_vers_entier(y0))
+        _cache_xs.append(_coord_vers_entier(x1))
+        _cache_ys.append(_coord_vers_entier(y1))
+        _cache_xs.append(_coord_vers_entier(x2))
+        _cache_ys.append(_coord_vers_entier(y2))
+        _cache_xs.append(_coord_vers_entier(x3))
+        _cache_ys.append(_coord_vers_entier(y3))
+        _cache_xs.append(_coord_vers_entier(x4))
+        _cache_ys.append(_coord_vers_entier(y4))
+        _cache_xs.append(_coord_vers_entier(x5))
+        _cache_ys.append(_coord_vers_entier(y5))
+        _cache_xs.append(_coord_vers_entier(x6))
+        _cache_ys.append(_coord_vers_entier(y6))
+        _cache_xs.append(_coord_vers_entier(x7))
+        _cache_ys.append(_coord_vers_entier(y7))
+        _cache_xs.append(_coord_vers_entier(x8))
+        _cache_ys.append(_coord_vers_entier(y8))
+        _cache_xs.append(_coord_vers_entier(x9))
+        _cache_ys.append(_coord_vers_entier(y9))
+        _cache_xs.append(_coord_vers_entier(x10))
+        _cache_ys.append(_coord_vers_entier(y10))
+        _cache_xs.append(_coord_vers_entier(x11))
+        _cache_ys.append(_coord_vers_entier(y11))
+    _compte_tuiles = _compte_tuiles + 1
+    retour 1
+
+
 déf _ajouter_tuile_4(x0, y0, x1, y1, x2, y2, x3, y3, larg, haut):
     soit min_x = min(min(x0, x1), min(x2, x3))
     soit max_x = max(max(x0, x1), max(x2, x3))
@@ -387,9 +596,10 @@ déf _ajouter_tuile_6(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, larg, haut
     retour 1
 
 
+
 déf _ajouter_poly(xs, ys, larg, haut):
-    global _tuiles_xs, _tuiles_ys, _tuiles_off, _tuiles_n
     global _vus_n, _vus_cx, _vus_cy
+    global _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs, _cache_ys
     n = len(xs)
     si n == 0:
         retour 0
@@ -417,13 +627,15 @@ déf _ajouter_poly(xs, ys, larg, haut):
     cy = sy / n
     si cx != cx ou cy != cy:
         retour 0
-    soit cx_q = _coord_vers_entier(cx)
-    soit cy_q = _coord_vers_entier(cy)
-    _tuiles_off.append(len(_tuiles_xs))
-    _tuiles_n.append(n)
-    pour i dans range(n):
-        _tuiles_xs.append(_coord_vers_entier(xs[i]))
-        _tuiles_ys.append(_coord_vers_entier(ys[i]))
+    si _cible_tuile == _compte_tuiles:
+        _cache_trouve = 1
+        _cache_n = n
+        _cache_xs = []
+        _cache_ys = []
+        pour i dans range(n):
+            _cache_xs.append(_coord_vers_entier(xs[i]))
+            _cache_ys.append(_coord_vers_entier(ys[i]))
+    _compte_tuiles = _compte_tuiles + 1
     retour 1
 
 
@@ -454,9 +666,13 @@ déf _gen_triangle(larg, haut, a):
             vers_haut = 1
             si (rang + col) % 2 != 0:
                 vers_haut = 0
-            soit xs = [sommet_tri_x(x, a, i, vers_haut) pour i dans range(3)]
-            soit ys = [sommet_tri_y(y, a, i, vers_haut) pour i dans range(3)]
-            _ajouter_poly(xs, ys, larg, haut)
+            soit x0 = sommet_tri_x(x, a, 0, vers_haut)
+            soit y0 = sommet_tri_y(y, a, 0, vers_haut)
+            soit x1 = sommet_tri_x(x, a, 1, vers_haut)
+            soit y1 = sommet_tri_y(y, a, 1, vers_haut)
+            soit x2 = sommet_tri_x(x, a, 2, vers_haut)
+            soit y2 = sommet_tri_y(y, a, 2, vers_haut)
+            _ajouter_tuile_3_direct(x0, y0, x1, y1, x2, y2, larg, haut)
     retour 0
 
 
@@ -470,16 +686,37 @@ déf _gen_trihex(larg, haut, a):
         decal = (rang % 2) * (pas_x / 2.0)
         pour col dans range(cols):
             x = -pas_x + decal + col * pas_x
-            soit hxs = [polygone_x(x, y, a, 6, -math.pi / 2.0, i) pour i dans range(6)]
-            soit hys = [polygone_y(x, y, a, 6, -math.pi / 2.0, i) pour i dans range(6)]
-            _ajouter_poly(hxs, hys, larg, haut)
-            pour i dans range(6):
-                i2 = (i + 1) % 6
-                t3x = tri_arete_x3(hxs[i], hys[i], hxs[i2], hys[i2])
-                t3y = tri_arete_y3(hxs[i], hys[i], hxs[i2], hys[i2])
-                soit txs = [hxs[i], hxs[i2], t3x]
-                soit tys = [hys[i], hys[i2], t3y]
-                _ajouter_poly(txs, tys, larg, haut)
+            soit x0 = polygone_x(x, y, a, 6, -math.pi / 2.0, 0)
+            soit y0 = polygone_y(x, y, a, 6, -math.pi / 2.0, 0)
+            soit x1 = polygone_x(x, y, a, 6, -math.pi / 2.0, 1)
+            soit y1 = polygone_y(x, y, a, 6, -math.pi / 2.0, 1)
+            soit x2 = polygone_x(x, y, a, 6, -math.pi / 2.0, 2)
+            soit y2 = polygone_y(x, y, a, 6, -math.pi / 2.0, 2)
+            soit x3 = polygone_x(x, y, a, 6, -math.pi / 2.0, 3)
+            soit y3 = polygone_y(x, y, a, 6, -math.pi / 2.0, 3)
+            soit x4 = polygone_x(x, y, a, 6, -math.pi / 2.0, 4)
+            soit y4 = polygone_y(x, y, a, 6, -math.pi / 2.0, 4)
+            soit x5 = polygone_x(x, y, a, 6, -math.pi / 2.0, 5)
+            soit y5 = polygone_y(x, y, a, 6, -math.pi / 2.0, 5)
+            _ajouter_tuile_6_direct(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, larg, haut)
+            soit t0x = tri_arete_x3(x0, y0, x1, y1)
+            soit t0y = tri_arete_y3(x0, y0, x1, y1)
+            _ajouter_tuile_3_direct(x0, y0, x1, y1, t0x, t0y, larg, haut)
+            soit t1x = tri_arete_x3(x1, y1, x2, y2)
+            soit t1y = tri_arete_y3(x1, y1, x2, y2)
+            _ajouter_tuile_3_direct(x1, y1, x2, y2, t1x, t1y, larg, haut)
+            soit t2x = tri_arete_x3(x2, y2, x3, y3)
+            soit t2y = tri_arete_y3(x2, y2, x3, y3)
+            _ajouter_tuile_3_direct(x2, y2, x3, y3, t2x, t2y, larg, haut)
+            soit t3x = tri_arete_x3(x3, y3, x4, y4)
+            soit t3y = tri_arete_y3(x3, y3, x4, y4)
+            _ajouter_tuile_3_direct(x3, y3, x4, y4, t3x, t3y, larg, haut)
+            soit t4x = tri_arete_x3(x4, y4, x5, y5)
+            soit t4y = tri_arete_y3(x4, y4, x5, y5)
+            _ajouter_tuile_3_direct(x4, y4, x5, y5, t4x, t4y, larg, haut)
+            soit t5x = tri_arete_x3(x5, y5, x0, y0)
+            soit t5y = tri_arete_y3(x5, y5, x0, y0)
+            _ajouter_tuile_3_direct(x5, y5, x0, y0, t5x, t5y, larg, haut)
     retour 0
 
 
@@ -498,9 +735,13 @@ déf _gen_snub_trihex(larg, haut, a):
                 vers_haut = 1
                 si (rang + col) % 2 != 0:
                     vers_haut = 0
-                soit xs = [sommet_tri_x(x, at, i, vers_haut) pour i dans range(3)]
-                soit ys = [sommet_tri_y(y, at, i, vers_haut) pour i dans range(3)]
-                _ajouter_poly(xs, ys, larg, haut)
+                soit x0 = sommet_tri_x(x, at, 0, vers_haut)
+                soit y0 = sommet_tri_y(y, at, 0, vers_haut)
+                soit x1 = sommet_tri_x(x, at, 1, vers_haut)
+                soit y1 = sommet_tri_y(y, at, 1, vers_haut)
+                soit x2 = sommet_tri_x(x, at, 2, vers_haut)
+                soit y2 = sommet_tri_y(y, at, 2, vers_haut)
+                _ajouter_tuile_3_direct(x0, y0, x1, y1, x2, y2, larg, haut)
             cnt = cnt + 1
     retour 0
 
@@ -511,15 +752,9 @@ déf _gen_elongated_triangular(larg, haut, a):
     tantque y <= haut + h:
         x = -a
         tantque x <= larg + a:
-            soit xs_sq = [x, x + a, x + a, x]
-            soit ys_sq = [y + h, y + h, y + h + a, y + h + a]
-            _ajouter_poly(xs_sq, ys_sq, larg, haut)
-            soit xs_tt = [x, x + a / 2.0, x + a]
-            soit ys_tt = [y + h, y, y + h]
-            _ajouter_poly(xs_tt, ys_tt, larg, haut)
-            soit xs_tb = [x, x + a / 2.0, x + a]
-            soit ys_tb = [y + h + a, y + h + a + h, y + h + a]
-            _ajouter_poly(xs_tb, ys_tb, larg, haut)
+            _ajouter_tuile_4_direct(x, y + h, x + a, y + h, x + a, y + h + a, x, y + h + a, larg, haut)
+            _ajouter_tuile_3_direct(x, y + h, x + a / 2.0, y, x + a, y + h, larg, haut)
+            _ajouter_tuile_3_direct(x, y + h + a, x + a / 2.0, y + h + a + h, x + a, y + h + a, larg, haut)
             x = x + a
         y = y + a + h
     retour 0
@@ -531,25 +766,39 @@ déf _gen_carre_snub(larg, haut, a):
     tantque y <= haut + pas:
         x = -pas
         tantque x <= larg + pas:
-            soit cxs = [polygone_x(x, y, a, 4, math.pi / 4.0, i) pour i dans range(4)]
-            soit cys = [polygone_y(x, y, a, 4, math.pi / 4.0, i) pour i dans range(4)]
-            _ajouter_poly(cxs, cys, larg, haut)
-            pour i dans range(4):
-                i2 = (i + 1) % 4
-                i3 = (i + 2) % 4
-                t3x = tri_arete_x3(cxs[i], cys[i], cxs[i2], cys[i2])
-                t3y = tri_arete_y3(cxs[i], cys[i], cxs[i2], cys[i2])
-                soit ta_xs = [cxs[i], cxs[i2], t3x]
-                soit ta_ys = [cys[i], cys[i2], t3y]
-                _ajouter_poly(ta_xs, ta_ys, larg, haut)
-                mx = (cxs[i2] + cxs[i3]) / 2.0
-                my = (cys[i2] + cys[i3]) / 2.0
-                decal = a * 0.55
-                si i % 2 == 1:
-                    decal = -decal
-                soit ti_xs = [cxs[i2], cxs[i3], mx]
-                soit ti_ys = [cys[i2], cys[i3], my + decal]
-                _ajouter_poly(ti_xs, ti_ys, larg, haut)
+            soit x0 = polygone_x(x, y, a, 4, math.pi / 4.0, 0)
+            soit y0 = polygone_y(x, y, a, 4, math.pi / 4.0, 0)
+            soit x1 = polygone_x(x, y, a, 4, math.pi / 4.0, 1)
+            soit y1 = polygone_y(x, y, a, 4, math.pi / 4.0, 1)
+            soit x2 = polygone_x(x, y, a, 4, math.pi / 4.0, 2)
+            soit y2 = polygone_y(x, y, a, 4, math.pi / 4.0, 2)
+            soit x3 = polygone_x(x, y, a, 4, math.pi / 4.0, 3)
+            soit y3 = polygone_y(x, y, a, 4, math.pi / 4.0, 3)
+            _ajouter_tuile_4_direct(x0, y0, x1, y1, x2, y2, x3, y3, larg, haut)
+            soit ta0x = tri_arete_x3(x0, y0, x1, y1)
+            soit ta0y = tri_arete_y3(x0, y0, x1, y1)
+            _ajouter_tuile_3_direct(x0, y0, x1, y1, ta0x, ta0y, larg, haut)
+            soit m0x = (x1 + x2) / 2.0
+            soit m0y = (y1 + y2) / 2.0 + a * 0.55
+            _ajouter_tuile_3_direct(x1, y1, x2, y2, m0x, m0y, larg, haut)
+            soit ta1x = tri_arete_x3(x1, y1, x2, y2)
+            soit ta1y = tri_arete_y3(x1, y1, x2, y2)
+            _ajouter_tuile_3_direct(x1, y1, x2, y2, ta1x, ta1y, larg, haut)
+            soit m1x = (x2 + x3) / 2.0
+            soit m1y = (y2 + y3) / 2.0 - a * 0.55
+            _ajouter_tuile_3_direct(x2, y2, x3, y3, m1x, m1y, larg, haut)
+            soit ta2x = tri_arete_x3(x2, y2, x3, y3)
+            soit ta2y = tri_arete_y3(x2, y2, x3, y3)
+            _ajouter_tuile_3_direct(x2, y2, x3, y3, ta2x, ta2y, larg, haut)
+            soit m2x = (x3 + x0) / 2.0
+            soit m2y = (y3 + y0) / 2.0 + a * 0.55
+            _ajouter_tuile_3_direct(x3, y3, x0, y0, m2x, m2y, larg, haut)
+            soit ta3x = tri_arete_x3(x3, y3, x0, y0)
+            soit ta3y = tri_arete_y3(x3, y3, x0, y0)
+            _ajouter_tuile_3_direct(x3, y3, x0, y0, ta3x, ta3y, larg, haut)
+            soit m3x = (x0 + x1) / 2.0
+            soit m3y = (y0 + y1) / 2.0 - a * 0.55
+            _ajouter_tuile_3_direct(x0, y0, x1, y1, m3x, m3y, larg, haut)
             x = x + pas
         y = y + pas
     retour 0
@@ -564,15 +813,50 @@ déf _gen_rhombitrihex(larg, haut, a):
         decal = (rang % 2) * (pas_x / 2.0)
         x = -pas_x + decal
         tantque x <= larg + pas_x:
-            soit hxs = [polygone_x(x, y, a, 6, -math.pi / 2.0, i) pour i dans range(6)]
-            soit hys = [polygone_y(x, y, a, 6, -math.pi / 2.0, i) pour i dans range(6)]
-            _ajouter_poly(hxs, hys, larg, haut)
+            soit h0x = polygone_x(x, y, a, 6, -math.pi / 2.0, 0)
+            soit h0y = polygone_y(x, y, a, 6, -math.pi / 2.0, 0)
+            soit h1x = polygone_x(x, y, a, 6, -math.pi / 2.0, 1)
+            soit h1y = polygone_y(x, y, a, 6, -math.pi / 2.0, 1)
+            soit h2x = polygone_x(x, y, a, 6, -math.pi / 2.0, 2)
+            soit h2y = polygone_y(x, y, a, 6, -math.pi / 2.0, 2)
+            soit h3x = polygone_x(x, y, a, 6, -math.pi / 2.0, 3)
+            soit h3y = polygone_y(x, y, a, 6, -math.pi / 2.0, 3)
+            soit h4x = polygone_x(x, y, a, 6, -math.pi / 2.0, 4)
+            soit h4y = polygone_y(x, y, a, 6, -math.pi / 2.0, 4)
+            soit h5x = polygone_x(x, y, a, 6, -math.pi / 2.0, 5)
+            soit h5y = polygone_y(x, y, a, 6, -math.pi / 2.0, 5)
+            _ajouter_tuile_6_direct(h0x, h0y, h1x, h1y, h2x, h2y, h3x, h3y, h4x, h4y, h5x, h5y, larg, haut)
             pour i dans range(6):
                 i2 = (i + 1) % 6
-                p1x = hxs[i]
-                p1y = hys[i]
-                p2x = hxs[i2]
-                p2y = hys[i2]
+                p1x = h0x
+                p1y = h0y
+                p2x = h1x
+                p2y = h1y
+                si i == 1:
+                    p1x = h1x
+                    p1y = h1y
+                    p2x = h2x
+                    p2y = h2y
+                si i == 2:
+                    p1x = h2x
+                    p1y = h2y
+                    p2x = h3x
+                    p2y = h3y
+                si i == 3:
+                    p1x = h3x
+                    p1y = h3y
+                    p2x = h4x
+                    p2y = h4y
+                si i == 4:
+                    p1x = h4x
+                    p1y = h4y
+                    p2x = h5x
+                    p2y = h5y
+                si i == 5:
+                    p1x = h5x
+                    p1y = h5y
+                    p2x = h0x
+                    p2y = h0y
                 dx = p2x - p1x
                 dy = p2y - p1y
                 lon = math.sqrt(dx * dx + dy * dy)
@@ -584,13 +868,17 @@ déf _gen_rhombitrihex(larg, haut, a):
                 ccx = (p1x + p2x) / 2.0 + nx * apo4
                 ccy = (p1y + p2y) / 2.0 + ny * apo4
                 angle = math.atan2(dy, dx)
-                soit qxs = [polygone_x(ccx, ccy, a, 4, angle, j) pour j dans range(4)]
-                soit qys = [polygone_y(ccx, ccy, a, 4, angle, j) pour j dans range(4)]
-                _ajouter_poly(qxs, qys, larg, haut)
+                soit q0x = polygone_x(ccx, ccy, a, 4, angle, 0)
+                soit q0y = polygone_y(ccx, ccy, a, 4, angle, 0)
+                soit q1x = polygone_x(ccx, ccy, a, 4, angle, 1)
+                soit q1y = polygone_y(ccx, ccy, a, 4, angle, 1)
+                soit q2x = polygone_x(ccx, ccy, a, 4, angle, 2)
+                soit q2y = polygone_y(ccx, ccy, a, 4, angle, 2)
+                soit q3x = polygone_x(ccx, ccy, a, 4, angle, 3)
+                soit q3y = polygone_y(ccx, ccy, a, 4, angle, 3)
+                _ajouter_tuile_4_direct(q0x, q0y, q1x, q1y, q2x, q2y, q3x, q3y, larg, haut)
                 apo3 = apotheme(3, a)
-                soit txs = [p1x, p2x, p2x + nx * apo3 * 0.9]
-                soit tys = [p1y, p2y, p2y + ny * apo3 * 0.9]
-                _ajouter_poly(txs, tys, larg, haut)
+                _ajouter_tuile_3_direct(p1x, p1y, p2x, p2y, p2x + nx * apo3 * 0.9, p2y + ny * apo3 * 0.9, larg, haut)
             x = x + pas_x
         rang = rang + 1
         y = y + pas_y
@@ -603,15 +891,41 @@ déf _gen_carre_tronque(larg, haut, a):
     tantque y <= haut + pas:
         x = -pas
         tantque x <= larg + pas:
-            soit oxs = [polygone_x(x, y, a, 8, math.pi / 8.0, i) pour i dans range(8)]
-            soit oys = [polygone_y(x, y, a, 8, math.pi / 8.0, i) pour i dans range(8)]
-            _ajouter_poly(oxs, oys, larg, haut)
-            soit q1xs = [polygone_x(x + pas / 2.0, y, a, 4, math.pi / 4.0, i) pour i dans range(4)]
-            soit q1ys = [polygone_y(x + pas / 2.0, y, a, 4, math.pi / 4.0, i) pour i dans range(4)]
-            _ajouter_poly(q1xs, q1ys, larg, haut)
-            soit q2xs = [polygone_x(x, y + pas / 2.0, a, 4, math.pi / 4.0, i) pour i dans range(4)]
-            soit q2ys = [polygone_y(x, y + pas / 2.0, a, 4, math.pi / 4.0, i) pour i dans range(4)]
-            _ajouter_poly(q2xs, q2ys, larg, haut)
+            soit o0x = polygone_x(x, y, a, 8, math.pi / 8.0, 0)
+            soit o0y = polygone_y(x, y, a, 8, math.pi / 8.0, 0)
+            soit o1x = polygone_x(x, y, a, 8, math.pi / 8.0, 1)
+            soit o1y = polygone_y(x, y, a, 8, math.pi / 8.0, 1)
+            soit o2x = polygone_x(x, y, a, 8, math.pi / 8.0, 2)
+            soit o2y = polygone_y(x, y, a, 8, math.pi / 8.0, 2)
+            soit o3x = polygone_x(x, y, a, 8, math.pi / 8.0, 3)
+            soit o3y = polygone_y(x, y, a, 8, math.pi / 8.0, 3)
+            soit o4x = polygone_x(x, y, a, 8, math.pi / 8.0, 4)
+            soit o4y = polygone_y(x, y, a, 8, math.pi / 8.0, 4)
+            soit o5x = polygone_x(x, y, a, 8, math.pi / 8.0, 5)
+            soit o5y = polygone_y(x, y, a, 8, math.pi / 8.0, 5)
+            soit o6x = polygone_x(x, y, a, 8, math.pi / 8.0, 6)
+            soit o6y = polygone_y(x, y, a, 8, math.pi / 8.0, 6)
+            soit o7x = polygone_x(x, y, a, 8, math.pi / 8.0, 7)
+            soit o7y = polygone_y(x, y, a, 8, math.pi / 8.0, 7)
+            _ajouter_tuile_8_direct(o0x, o0y, o1x, o1y, o2x, o2y, o3x, o3y, o4x, o4y, o5x, o5y, o6x, o6y, o7x, o7y, larg, haut)
+            soit q10x = polygone_x(x + pas / 2.0, y, a, 4, math.pi / 4.0, 0)
+            soit q10y = polygone_y(x + pas / 2.0, y, a, 4, math.pi / 4.0, 0)
+            soit q11x = polygone_x(x + pas / 2.0, y, a, 4, math.pi / 4.0, 1)
+            soit q11y = polygone_y(x + pas / 2.0, y, a, 4, math.pi / 4.0, 1)
+            soit q12x = polygone_x(x + pas / 2.0, y, a, 4, math.pi / 4.0, 2)
+            soit q12y = polygone_y(x + pas / 2.0, y, a, 4, math.pi / 4.0, 2)
+            soit q13x = polygone_x(x + pas / 2.0, y, a, 4, math.pi / 4.0, 3)
+            soit q13y = polygone_y(x + pas / 2.0, y, a, 4, math.pi / 4.0, 3)
+            _ajouter_tuile_4_direct(q10x, q10y, q11x, q11y, q12x, q12y, q13x, q13y, larg, haut)
+            soit q20x = polygone_x(x, y + pas / 2.0, a, 4, math.pi / 4.0, 0)
+            soit q20y = polygone_y(x, y + pas / 2.0, a, 4, math.pi / 4.0, 0)
+            soit q21x = polygone_x(x, y + pas / 2.0, a, 4, math.pi / 4.0, 1)
+            soit q21y = polygone_y(x, y + pas / 2.0, a, 4, math.pi / 4.0, 1)
+            soit q22x = polygone_x(x, y + pas / 2.0, a, 4, math.pi / 4.0, 2)
+            soit q22y = polygone_y(x, y + pas / 2.0, a, 4, math.pi / 4.0, 2)
+            soit q23x = polygone_x(x, y + pas / 2.0, a, 4, math.pi / 4.0, 3)
+            soit q23y = polygone_y(x, y + pas / 2.0, a, 4, math.pi / 4.0, 3)
+            _ajouter_tuile_4_direct(q20x, q20y, q21x, q21y, q22x, q22y, q23x, q23y, larg, haut)
             x = x + pas
         y = y + pas
     retour 0
@@ -629,15 +943,92 @@ déf _gen_grand_rhombitrihex(larg, haut, a):
         decal = (rang % 2) * (pas_x / 2.0)
         x = -pas_x + decal
         tantque x <= larg + pas_x:
-            soit dxs = [polygone_x(x, y, a, 12, math.pi / 12.0, i) pour i dans range(12)]
-            soit dys = [polygone_y(x, y, a, 12, math.pi / 12.0, i) pour i dans range(12)]
-            _ajouter_poly(dxs, dys, larg, haut)
+            soit d0x = polygone_x(x, y, a, 12, math.pi / 12.0, 0)
+            soit d0y = polygone_y(x, y, a, 12, math.pi / 12.0, 0)
+            soit d1x = polygone_x(x, y, a, 12, math.pi / 12.0, 1)
+            soit d1y = polygone_y(x, y, a, 12, math.pi / 12.0, 1)
+            soit d2x = polygone_x(x, y, a, 12, math.pi / 12.0, 2)
+            soit d2y = polygone_y(x, y, a, 12, math.pi / 12.0, 2)
+            soit d3x = polygone_x(x, y, a, 12, math.pi / 12.0, 3)
+            soit d3y = polygone_y(x, y, a, 12, math.pi / 12.0, 3)
+            soit d4x = polygone_x(x, y, a, 12, math.pi / 12.0, 4)
+            soit d4y = polygone_y(x, y, a, 12, math.pi / 12.0, 4)
+            soit d5x = polygone_x(x, y, a, 12, math.pi / 12.0, 5)
+            soit d5y = polygone_y(x, y, a, 12, math.pi / 12.0, 5)
+            soit d6x = polygone_x(x, y, a, 12, math.pi / 12.0, 6)
+            soit d6y = polygone_y(x, y, a, 12, math.pi / 12.0, 6)
+            soit d7x = polygone_x(x, y, a, 12, math.pi / 12.0, 7)
+            soit d7y = polygone_y(x, y, a, 12, math.pi / 12.0, 7)
+            soit d8x = polygone_x(x, y, a, 12, math.pi / 12.0, 8)
+            soit d8y = polygone_y(x, y, a, 12, math.pi / 12.0, 8)
+            soit d9x = polygone_x(x, y, a, 12, math.pi / 12.0, 9)
+            soit d9y = polygone_y(x, y, a, 12, math.pi / 12.0, 9)
+            soit d10x = polygone_x(x, y, a, 12, math.pi / 12.0, 10)
+            soit d10y = polygone_y(x, y, a, 12, math.pi / 12.0, 10)
+            soit d11x = polygone_x(x, y, a, 12, math.pi / 12.0, 11)
+            soit d11y = polygone_y(x, y, a, 12, math.pi / 12.0, 11)
+            _ajouter_tuile_12_direct(d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y, d4x, d4y, d5x, d5y, d6x, d6y, d7x, d7y, d8x, d8y, d9x, d9y, d10x, d10y, d11x, d11y, larg, haut)
             pour i dans range(12):
                 i2 = (i + 1) % 12
-                p1x = dxs[i]
-                p1y = dys[i]
-                p2x = dxs[i2]
-                p2y = dys[i2]
+                p1x = d0x
+                p1y = d0y
+                p2x = d1x
+                p2y = d1y
+                si i == 1:
+                    p1x = d1x
+                    p1y = d1y
+                    p2x = d2x
+                    p2y = d2y
+                si i == 2:
+                    p1x = d2x
+                    p1y = d2y
+                    p2x = d3x
+                    p2y = d3y
+                si i == 3:
+                    p1x = d3x
+                    p1y = d3y
+                    p2x = d4x
+                    p2y = d4y
+                si i == 4:
+                    p1x = d4x
+                    p1y = d4y
+                    p2x = d5x
+                    p2y = d5y
+                si i == 5:
+                    p1x = d5x
+                    p1y = d5y
+                    p2x = d6x
+                    p2y = d6y
+                si i == 6:
+                    p1x = d6x
+                    p1y = d6y
+                    p2x = d7x
+                    p2y = d7y
+                si i == 7:
+                    p1x = d7x
+                    p1y = d7y
+                    p2x = d8x
+                    p2y = d8y
+                si i == 8:
+                    p1x = d8x
+                    p1y = d8y
+                    p2x = d9x
+                    p2y = d9y
+                si i == 9:
+                    p1x = d9x
+                    p1y = d9y
+                    p2x = d10x
+                    p2y = d10y
+                si i == 10:
+                    p1x = d10x
+                    p1y = d10y
+                    p2x = d11x
+                    p2y = d11y
+                si i == 11:
+                    p1x = d11x
+                    p1y = d11y
+                    p2x = d0x
+                    p2y = d0y
                 dx = p2x - p1x
                 dy = p2y - p1y
                 lon = math.sqrt(dx * dx + dy * dy)
@@ -648,14 +1039,30 @@ déf _gen_grand_rhombitrihex(larg, haut, a):
                 mx = (p1x + p2x) / 2.0
                 my = (p1y + p2y) / 2.0
                 si i % 2 == 0:
-                    soit pxs = [polygone_x(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, j) pour j dans range(6)]
-                    soit pys = [polygone_y(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, j) pour j dans range(6)]
-                    _ajouter_poly(pxs, pys, larg, haut)
+                    soit h0x = polygone_x(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 0)
+                    soit h0y = polygone_y(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 0)
+                    soit h1x = polygone_x(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 1)
+                    soit h1y = polygone_y(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 1)
+                    soit h2x = polygone_x(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 2)
+                    soit h2y = polygone_y(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 2)
+                    soit h3x = polygone_x(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 3)
+                    soit h3y = polygone_y(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 3)
+                    soit h4x = polygone_x(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 4)
+                    soit h4y = polygone_y(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 4)
+                    soit h5x = polygone_x(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 5)
+                    soit h5y = polygone_y(mx + nx * apo6, my + ny * apo6, a, 6, -math.pi / 2.0, 5)
+                    _ajouter_tuile_6_direct(h0x, h0y, h1x, h1y, h2x, h2y, h3x, h3y, h4x, h4y, h5x, h5y, larg, haut)
                 sinon:
                     angle = math.atan2(dy, dx)
-                    soit pxs = [polygone_x(mx + nx * apo4, my + ny * apo4, a, 4, angle, j) pour j dans range(4)]
-                    soit pys = [polygone_y(mx + nx * apo4, my + ny * apo4, a, 4, angle, j) pour j dans range(4)]
-                    _ajouter_poly(pxs, pys, larg, haut)
+                    soit q0x = polygone_x(mx + nx * apo4, my + ny * apo4, a, 4, angle, 0)
+                    soit q0y = polygone_y(mx + nx * apo4, my + ny * apo4, a, 4, angle, 0)
+                    soit q1x = polygone_x(mx + nx * apo4, my + ny * apo4, a, 4, angle, 1)
+                    soit q1y = polygone_y(mx + nx * apo4, my + ny * apo4, a, 4, angle, 1)
+                    soit q2x = polygone_x(mx + nx * apo4, my + ny * apo4, a, 4, angle, 2)
+                    soit q2y = polygone_y(mx + nx * apo4, my + ny * apo4, a, 4, angle, 2)
+                    soit q3x = polygone_x(mx + nx * apo4, my + ny * apo4, a, 4, angle, 3)
+                    soit q3y = polygone_y(mx + nx * apo4, my + ny * apo4, a, 4, angle, 3)
+                    _ajouter_tuile_4_direct(q0x, q0y, q1x, q1y, q2x, q2y, q3x, q3y, larg, haut)
             x = x + pas_x
         rang = rang + 1
         y = y + pas_y
@@ -672,16 +1079,64 @@ déf _gen_hex_tronque(larg, haut, a):
         decal = (rang % 2) * (pas_x / 2.0)
         x = -pas_x + decal
         tantque x <= larg + pas_x:
-            soit dxs = [polygone_x(x, y, a, 12, math.pi / 12.0, i) pour i dans range(12)]
-            soit dys = [polygone_y(x, y, a, 12, math.pi / 12.0, i) pour i dans range(12)]
-            _ajouter_poly(dxs, dys, larg, haut)
+            soit d0x = polygone_x(x, y, a, 12, math.pi / 12.0, 0)
+            soit d0y = polygone_y(x, y, a, 12, math.pi / 12.0, 0)
+            soit d1x = polygone_x(x, y, a, 12, math.pi / 12.0, 1)
+            soit d1y = polygone_y(x, y, a, 12, math.pi / 12.0, 1)
+            soit d2x = polygone_x(x, y, a, 12, math.pi / 12.0, 2)
+            soit d2y = polygone_y(x, y, a, 12, math.pi / 12.0, 2)
+            soit d3x = polygone_x(x, y, a, 12, math.pi / 12.0, 3)
+            soit d3y = polygone_y(x, y, a, 12, math.pi / 12.0, 3)
+            soit d4x = polygone_x(x, y, a, 12, math.pi / 12.0, 4)
+            soit d4y = polygone_y(x, y, a, 12, math.pi / 12.0, 4)
+            soit d5x = polygone_x(x, y, a, 12, math.pi / 12.0, 5)
+            soit d5y = polygone_y(x, y, a, 12, math.pi / 12.0, 5)
+            soit d6x = polygone_x(x, y, a, 12, math.pi / 12.0, 6)
+            soit d6y = polygone_y(x, y, a, 12, math.pi / 12.0, 6)
+            soit d7x = polygone_x(x, y, a, 12, math.pi / 12.0, 7)
+            soit d7y = polygone_y(x, y, a, 12, math.pi / 12.0, 7)
+            soit d8x = polygone_x(x, y, a, 12, math.pi / 12.0, 8)
+            soit d8y = polygone_y(x, y, a, 12, math.pi / 12.0, 8)
+            soit d9x = polygone_x(x, y, a, 12, math.pi / 12.0, 9)
+            soit d9y = polygone_y(x, y, a, 12, math.pi / 12.0, 9)
+            soit d10x = polygone_x(x, y, a, 12, math.pi / 12.0, 10)
+            soit d10y = polygone_y(x, y, a, 12, math.pi / 12.0, 10)
+            soit d11x = polygone_x(x, y, a, 12, math.pi / 12.0, 11)
+            soit d11y = polygone_y(x, y, a, 12, math.pi / 12.0, 11)
+            _ajouter_tuile_12_direct(d0x, d0y, d1x, d1y, d2x, d2y, d3x, d3y, d4x, d4y, d5x, d5y, d6x, d6y, d7x, d7y, d8x, d8y, d9x, d9y, d10x, d10y, d11x, d11y, larg, haut)
             pour i dans range(0, 12, 2):
-                i2 = (i + 1) % 12
-                t3x = tri_arete_x3(dxs[i], dys[i], dxs[i2], dys[i2])
-                t3y = tri_arete_y3(dxs[i], dys[i], dxs[i2], dys[i2])
-                soit txs = [dxs[i], dxs[i2], t3x]
-                soit tys = [dys[i], dys[i2], t3y]
-                _ajouter_poly(txs, tys, larg, haut)
+                p1x = d0x
+                p1y = d0y
+                p2x = d1x
+                p2y = d1y
+                si i == 2:
+                    p1x = d2x
+                    p1y = d2y
+                    p2x = d3x
+                    p2y = d3y
+                si i == 4:
+                    p1x = d4x
+                    p1y = d4y
+                    p2x = d5x
+                    p2y = d5y
+                si i == 6:
+                    p1x = d6x
+                    p1y = d6y
+                    p2x = d7x
+                    p2y = d7y
+                si i == 8:
+                    p1x = d8x
+                    p1y = d8y
+                    p2x = d9x
+                    p2y = d9y
+                si i == 10:
+                    p1x = d10x
+                    p1y = d10y
+                    p2x = d11x
+                    p2y = d11y
+                t3x = tri_arete_x3(p1x, p1y, p2x, p2y)
+                t3y = tri_arete_y3(p1x, p1y, p2x, p2y)
+                _ajouter_tuile_3_direct(p1x, p1y, p2x, p2y, t3x, t3y, larg, haut)
             x = x + pas_x
         rang = rang + 1
         y = y + pas_y
@@ -724,22 +1179,51 @@ déf generer_tuiles(larg, haut, a, methode):
         _gen_grand_rhombitrihex(larg, haut, a)
     si m == 10:
         _gen_hex_tronque(larg, haut, a)
-    retour len(_tuiles_off)
+    retour _compte_tuiles
 
 
 déf tuile_n_sommets(i):
-    global _tuiles_n, _methode_active
+    global _tuiles_n, _methode_active, _cache_n
+    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_xs, _cache_ys
     si _methode_active == 0:
         retour 6
     si _methode_active == 1:
         retour 4
+    _vus_n = []
+    _vus_cx = []
+    _vus_cy = []
+    _compte_tuiles = 0
+    _cible_tuile = entier(i)
+    _cache_trouve = 0
+    _cache_n = 0
+    _cache_xs = []
+    _cache_ys = []
     si _methode_active == 2:
-        retour 3
-    retour _tuiles_n[entier(i)]
+        _gen_triangle(_gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 3:
+        _gen_trihex(_gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 4:
+        _gen_snub_trihex(_gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 5:
+        _gen_elongated_triangular(_gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 6:
+        _gen_carre_snub(_gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 7:
+        _gen_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 8:
+        _gen_carre_tronque(_gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 9:
+        _gen_grand_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
+    si _methode_active == 10:
+        _gen_hex_tronque(_gen_larg, _gen_haut, _gen_a)
+    si _cache_trouve == 1:
+        retour _cache_n
+    retour 0
 
 
 déf tuile_sommet_x(i, j):
-    global _tuiles_xs, _tuiles_off, _methode_active, _gen_larg, _gen_haut, _gen_a
+    global _tuiles_xs, _tuiles_off, _methode_active, _gen_larg, _gen_haut, _gen_a, _cache_xs
+    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_ys
     si _methode_active == 0:
         soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
         soit cy = _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
@@ -756,11 +1240,42 @@ déf tuile_sommet_x(i, j):
         si entier(j) == 2:
             retour x2
         retour x
-    retour _tuiles_xs[entier(_tuiles_off[entier(i)]) + entier(j)] / 100.0
+    si _cache_trouve != 1 ou _cible_tuile != entier(i):
+        _vus_n = []
+        _vus_cx = []
+        _vus_cy = []
+        _compte_tuiles = 0
+        _cible_tuile = entier(i)
+        _cache_trouve = 0
+        _cache_n = 0
+        _cache_xs = []
+        _cache_ys = []
+        si _methode_active == 2:
+            _gen_triangle(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 3:
+            _gen_trihex(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 4:
+            _gen_snub_trihex(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 5:
+            _gen_elongated_triangular(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 6:
+            _gen_carre_snub(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 7:
+            _gen_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 8:
+            _gen_carre_tronque(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 9:
+            _gen_grand_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 10:
+            _gen_hex_tronque(_gen_larg, _gen_haut, _gen_a)
+    si _cache_trouve == 1:
+        retour _cache_xs[entier(j)] / 100.0
+    retour 0.0
 
 
 déf tuile_sommet_y(i, j):
-    global _tuiles_ys, _tuiles_off, _methode_active, _gen_larg, _gen_haut, _gen_a
+    global _tuiles_ys, _tuiles_off, _methode_active, _gen_larg, _gen_haut, _gen_a, _cache_ys
+    global _vus_n, _vus_cx, _vus_cy, _compte_tuiles, _cible_tuile, _cache_trouve, _cache_n, _cache_xs
     si _methode_active == 0:
         soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
         soit cy = _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
@@ -777,7 +1292,37 @@ déf tuile_sommet_y(i, j):
         si entier(j) == 2:
             retour y2
         retour y2
-    retour _tuiles_ys[entier(_tuiles_off[entier(i)]) + entier(j)] / 100.0
+    si _cache_trouve != 1 ou _cible_tuile != entier(i):
+        _vus_n = []
+        _vus_cx = []
+        _vus_cy = []
+        _compte_tuiles = 0
+        _cible_tuile = entier(i)
+        _cache_trouve = 0
+        _cache_n = 0
+        _cache_xs = []
+        _cache_ys = []
+        si _methode_active == 2:
+            _gen_triangle(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 3:
+            _gen_trihex(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 4:
+            _gen_snub_trihex(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 5:
+            _gen_elongated_triangular(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 6:
+            _gen_carre_snub(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 7:
+            _gen_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 8:
+            _gen_carre_tronque(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 9:
+            _gen_grand_rhombitrihex(_gen_larg, _gen_haut, _gen_a)
+        si _methode_active == 10:
+            _gen_hex_tronque(_gen_larg, _gen_haut, _gen_a)
+    si _cache_trouve == 1:
+        retour _cache_ys[entier(j)] / 100.0
+    retour 0.0
 
 
 # ── Codes de methode ──────────────────────────────────────────
