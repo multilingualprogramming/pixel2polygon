@@ -1,4 +1,3 @@
-const MAX_DIM = 1200;
 // Maximum tiles the WASM module will store (matches _MAX_TUILES in hexagonify_wasm.ml).
 const MAX_TUILES_WASM = 2000;
 
@@ -45,6 +44,8 @@ const EXPORTS_CODES_METHODES = {
   grand_rhombitrihex: "methode_grand_rhombitrihex",
   hex_tronque: "methode_hex_tronque",
 };
+
+const METHODES_WASM_REPLI = ["hex", "square"];
 
 let wasm = null;
 let loadedImage = null;
@@ -249,13 +250,6 @@ function couleurContourCss() {
   return `rgba(${r},${g},${b},${(state.outlineOpacity / 100).toFixed(3)})`;
 }
 
-function dimensionsScalees(imgEl) {
-  let w = imgEl.naturalWidth, h = imgEl.naturalHeight;
-  if (w > MAX_DIM) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
-  if (h > MAX_DIM) { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
-  return [w, h];
-}
-
 function lireSommetsTuile(ti) {
   const n = Number(wasm.tuile_n_sommets(ti));
   if (!Number.isInteger(n) || n < 3 || n > 64) return null;
@@ -286,9 +280,31 @@ function entierSecurise(valeur, secours, minimum = null, maximum = null) {
   return n;
 }
 
+function genererTuilesAvecRepli(w, h, cote, methodeDemandee) {
+  const essais = [methodeDemandee, ...METHODES_WASM_REPLI.filter((nom) => nom !== methodeDemandee)];
+  let derniereErreur = null;
+
+  for (const nom of essais) {
+    const code = entierSecurise(METHODES[nom], METHODES.hex, 0);
+    try {
+      const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
+      if (!Number.isInteger(nTuiles) || nTuiles < 0) {
+        throw new Error(`Nombre de tuiles invalide renvoye par WASM: ${nTuiles}`);
+      }
+      return { nTuiles, methodeUtilisee: nom, methodeDemandee };
+    } catch (err) {
+      derniereErreur = err;
+      console.warn(`[pixel2polygon] Mode ${nom} indisponible dans le WASM :`, err);
+    }
+  }
+
+  throw derniereErreur ?? new Error("Aucune methode de rendu WASM disponible.");
+}
+
 function afficherSource(imgEl) {
   const srcCanvas = document.getElementById("source-canvas");
-  const [w, h] = dimensionsScalees(imgEl);
+  const w = imgEl.naturalWidth;
+  const h = imgEl.naturalHeight;
   srcCanvas.width = w;
   srcCanvas.height = h;
   srcCanvas.getContext("2d").drawImage(imgEl, 0, 0, w, h);
@@ -318,12 +334,11 @@ async function rendreSortie() {
     ctx.fillStyle = `rgb(${bgCouleur[0]},${bgCouleur[1]},${bgCouleur[2]})`;
     ctx.fillRect(0, 0, w, h);
 
-    const code = entierSecurise(METHODES[state.method], METHODES.hex, 0);
     let cote = entierSecurise(state.side, 30, 1);
     const coteDemande = cote;
     const coteMin = coteSuretePourImage(w, h, state.method);
     if (cote < coteMin) cote = coteMin;
-    const nTuiles = Number(wasm.generer_tuiles(w, h, cote, code));
+    const { nTuiles, methodeUtilisee } = genererTuilesAvecRepli(w, h, cote, state.method);
     if (cote !== coteDemande) {
       status.textContent = `Taille ajustee a ${cote}px (limite du mode ${state.method}).`;
     }
@@ -333,9 +348,6 @@ async function rendreSortie() {
       if (tileSizeEl) tileSizeEl.value = String(cote);
       const tileSizeDisp = document.getElementById("tile-size-display");
       if (tileSizeDisp) tileSizeDisp.textContent = String(cote);
-    }
-    if (!Number.isInteger(nTuiles) || nTuiles < 0) {
-      throw new Error(`Nombre de tuiles invalide renvoye par WASM: ${nTuiles}`);
     }
     const indices = Array.from({ length: nTuiles }, (_, i) => i);
     indices.sort((a, b) => lireNombreSommetsTuile(a) - lireNombreSommetsTuile(b));
@@ -359,9 +371,12 @@ async function rendreSortie() {
       if (couleur) dessinerTuile(ctx, sommets, couleur, state.outlineWidth, cssContour);
     }
 
+    const libelleMode = methodeUtilisee === state.method
+      ? `mode ${state.method}`
+      : `mode ${state.method} (repli WASM vers ${methodeUtilisee})`;
     status.textContent = tuilesInvalides > 0
-      ? `Rendu termine : ${nTuiles - tuilesInvalides}/${nTuiles} tuiles valides pour le mode ${state.method}.`
-      : `Rendu termine : ${nTuiles} tuiles pour le mode ${state.method}.`;
+      ? `Rendu termine : ${nTuiles - tuilesInvalides}/${nTuiles} tuiles valides pour le ${libelleMode}.`
+      : `Rendu termine : ${nTuiles} tuiles pour le ${libelleMode}.`;
     btnDl.disabled = false;
   } catch (err) {
     console.error("[pixel2polygon] Echec du rendu :", err);

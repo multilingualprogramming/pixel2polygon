@@ -246,6 +246,9 @@ _vus_n = []
 _vus_cx = []
 _vus_cy = []
 _methode_active = 0
+_gen_larg = 0.0
+_gen_haut = 0.0
+_gen_a = 0.0
 
 
 déf _coord_vers_entier(valeur):
@@ -271,6 +274,73 @@ déf _hors_champ(min_x, max_x, min_y, max_y, larg, haut):
     si max_x < 0 ou max_y < 0 ou min_x > larg ou min_y > haut:
         retour 1
     retour 0
+
+
+déf _hex_visible(x, y, larg, haut, a):
+    soit demi_larg = espacement_horiz(a) / 2.0
+    soit min_x = x - demi_larg
+    soit max_x = x + demi_larg
+    soit min_y = y - a
+    soit max_y = y + a
+    retour 1 - _hors_champ(min_x, max_x, min_y, max_y, larg, haut)
+
+
+déf _compter_hex_visibles(larg, haut, a):
+    soit hs = espacement_horiz(a)
+    soit vs = espacement_vert(a)
+    soit rangs = _nb_pas_inclusifs(-2.0 * a, haut + 2.0 * a, vs)
+    soit cols = _nb_pas_inclusifs(-hs, larg + hs, hs)
+    soit total = 0
+    pour rang dans range(rangs):
+        soit y = -2.0 * a + rang * vs
+        soit decal = (rang % 2) * (hs / 2.0)
+        pour col dans range(cols):
+            soit x = -hs + decal + col * hs
+            si _hex_visible(x, y, larg, haut, a) == 1:
+                total = total + 1
+    retour total
+
+
+déf _hex_centre_x_par_index(index, larg, haut, a):
+    soit hs = espacement_horiz(a)
+    soit vs = espacement_vert(a)
+    soit rangs = _nb_pas_inclusifs(-2.0 * a, haut + 2.0 * a, vs)
+    soit cols = _nb_pas_inclusifs(-hs, larg + hs, hs)
+    soit courant = 0
+    pour rang dans range(rangs):
+        soit y = -2.0 * a + rang * vs
+        soit decal = (rang % 2) * (hs / 2.0)
+        pour col dans range(cols):
+            soit x = -hs + decal + col * hs
+            si _hex_visible(x, y, larg, haut, a) == 1:
+                si courant == index:
+                    retour x
+                courant = courant + 1
+    retour 0.0
+
+
+déf _hex_centre_y_par_index(index, larg, haut, a):
+    soit hs = espacement_horiz(a)
+    soit vs = espacement_vert(a)
+    soit rangs = _nb_pas_inclusifs(-2.0 * a, haut + 2.0 * a, vs)
+    soit cols = _nb_pas_inclusifs(-hs, larg + hs, hs)
+    soit courant = 0
+    pour rang dans range(rangs):
+        soit y = -2.0 * a + rang * vs
+        soit decal = (rang % 2) * (hs / 2.0)
+        pour col dans range(cols):
+            soit x = -hs + decal + col * hs
+            si _hex_visible(x, y, larg, haut, a) == 1:
+                si courant == index:
+                    retour y
+                courant = courant + 1
+    retour 0.0
+
+
+déf _compter_carres(larg, haut, a):
+    soit cols = entier(math.ceil(larg / a))
+    soit rangs = entier(math.ceil(haut / a))
+    retour cols * rangs
 
 
 déf _ajouter_tuile_4(x0, y0, x1, y1, x2, y2, x3, y3, larg, haut):
@@ -366,42 +436,11 @@ déf _nb_pas_inclusifs(debut, fin, pas):
 # ── Generateurs de tuiles ─────────────────────────────────────
 
 déf _gen_hex(larg, haut, a):
-    hs = espacement_horiz(a)
-    vs = espacement_vert(a)
-    rangs = _nb_pas_inclusifs(-2.0 * a, haut + 2.0 * a, vs)
-    cols = _nb_pas_inclusifs(-hs, larg + hs, hs)
-    pour rang dans range(rangs):
-        y = -2.0 * a + rang * vs
-        decal = (rang % 2) * (hs / 2.0)
-        pour col dans range(cols):
-            x = -hs + decal + col * hs
-            soit x0 = sommet_hex_x(x, y, a, 0)
-            soit y0 = sommet_hex_y(x, y, a, 0)
-            soit x1 = sommet_hex_x(x, y, a, 1)
-            soit y1 = sommet_hex_y(x, y, a, 1)
-            soit x2 = sommet_hex_x(x, y, a, 2)
-            soit y2 = sommet_hex_y(x, y, a, 2)
-            soit x3 = sommet_hex_x(x, y, a, 3)
-            soit y3 = sommet_hex_y(x, y, a, 3)
-            soit x4 = sommet_hex_x(x, y, a, 4)
-            soit y4 = sommet_hex_y(x, y, a, 4)
-            soit x5 = sommet_hex_x(x, y, a, 5)
-            soit y5 = sommet_hex_y(x, y, a, 5)
-            _ajouter_tuile_6(x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, larg, haut)
-    retour 0
+    retour _compter_hex_visibles(larg, haut, a)
 
 
 déf _gen_carre(larg, haut, a):
-    cols = entier(math.ceil(larg / a))
-    rangs = entier(math.ceil(haut / a))
-    pour col dans range(cols):
-        x = col * a
-        pour rang dans range(rangs):
-            y = rang * a
-            x2 = min(larg, x + a)
-            y2 = min(haut, y + a)
-            _ajouter_tuile_4(x, y, x2, y, x2, y2, x, y2, larg, haut)
-    retour 0
+    retour _compter_carres(larg, haut, a)
 
 
 déf _gen_triangle(larg, haut, a):
@@ -652,7 +691,7 @@ déf _gen_hex_tronque(larg, haut, a):
 # ── Dispatch et acces aux tuiles ──────────────────────────────
 
 déf generer_tuiles(larg, haut, a, methode):
-    global _methode_active
+    global _methode_active, _gen_larg, _gen_haut, _gen_a
     _tuiles_reinit()
     si larg != larg ou haut != haut ou a != a ou methode != methode:
         retour 0
@@ -660,10 +699,13 @@ déf generer_tuiles(larg, haut, a, methode):
         retour 0
     m = entier(methode)
     _methode_active = m
+    _gen_larg = larg
+    _gen_haut = haut
+    _gen_a = a
     si m == 0:
-        _gen_hex(larg, haut, a)
+        retour _gen_hex(larg, haut, a)
     si m == 1:
-        _gen_carre(larg, haut, a)
+        retour _gen_carre(larg, haut, a)
     si m == 2:
         _gen_triangle(larg, haut, a)
     si m == 3:
@@ -697,12 +739,44 @@ déf tuile_n_sommets(i):
 
 
 déf tuile_sommet_x(i, j):
-    global _tuiles_xs, _tuiles_off
+    global _tuiles_xs, _tuiles_off, _methode_active, _gen_larg, _gen_haut, _gen_a
+    si _methode_active == 0:
+        soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
+        soit cy = _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
+        retour sommet_hex_x(cx, cy, _gen_a, entier(j))
+    si _methode_active == 1:
+        soit cols = entier(math.ceil(_gen_larg / _gen_a))
+        soit col = entier(i) % cols
+        soit x = col * _gen_a
+        soit x2 = min(_gen_larg, x + _gen_a)
+        si entier(j) == 0:
+            retour x
+        si entier(j) == 1:
+            retour x2
+        si entier(j) == 2:
+            retour x2
+        retour x
     retour _tuiles_xs[entier(_tuiles_off[entier(i)]) + entier(j)] / 100.0
 
 
 déf tuile_sommet_y(i, j):
-    global _tuiles_ys, _tuiles_off
+    global _tuiles_ys, _tuiles_off, _methode_active, _gen_larg, _gen_haut, _gen_a
+    si _methode_active == 0:
+        soit cx = _hex_centre_x_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
+        soit cy = _hex_centre_y_par_index(entier(i), _gen_larg, _gen_haut, _gen_a)
+        retour sommet_hex_y(cx, cy, _gen_a, entier(j))
+    si _methode_active == 1:
+        soit cols = entier(math.ceil(_gen_larg / _gen_a))
+        soit rang = entier(i) // cols
+        soit y = rang * _gen_a
+        soit y2 = min(_gen_haut, y + _gen_a)
+        si entier(j) == 0:
+            retour y
+        si entier(j) == 1:
+            retour y
+        si entier(j) == 2:
+            retour y2
+        retour y2
     retour _tuiles_ys[entier(_tuiles_off[entier(i)]) + entier(j)] / 100.0
 
 

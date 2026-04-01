@@ -9,6 +9,7 @@ const APP_JS = path.join(ROOT, "public", "app.js");
 const INDEX_HTML = path.join(ROOT, "public", "index.html");
 const WASM_PATH = path.join(ROOT, "public", "hexagonify.wasm");
 const FLOWER_JPG = path.join(ROOT, "images", "flower.jpg");
+const TREE_JPG = path.join(ROOT, "images", "tree.jpg");
 
 class MockClassList {
   constructor() {
@@ -316,22 +317,28 @@ async function instantiateProjectWasm() {
   return instance.exports;
 }
 
-async function testFlowerImageProducesTilesInWasm() {
-  const { width, height } = readJpegSize(FLOWER_JPG);
-  assert.deepStrictEqual({ width, height }, { width: 640, height: 480 });
-
+async function testSampleImagesProduceTilesInWasm() {
   const wasm = await instantiateProjectWasm();
   const side = 120;
   const methods = [
     ["hex", 0],
     ["square", 1],
   ];
+  const images = [
+    ["flower.jpg", FLOWER_JPG, { width: 640, height: 480 }],
+    ["tree.jpg", TREE_JPG, { width: 4000, height: 3000 }],
+  ];
 
-  for (const [name, code] of methods) {
-    const count = Number(wasm.generer_tuiles(width, height, side, code));
-    assert.ok(count > 0, `expected tiles for ${name} on flower.jpg, got ${count}`);
-    const firstTileVertices = Number(wasm.tuile_n_sommets(0));
-    assert.ok(firstTileVertices >= 3, `expected a polygon for ${name}, got ${firstTileVertices}`);
+  for (const [imageName, imagePath, expectedSize] of images) {
+    const { width, height } = readJpegSize(imagePath);
+    assert.deepStrictEqual({ width, height }, expectedSize);
+
+    for (const [name, code] of methods) {
+      const count = Number(wasm.generer_tuiles(width, height, side, code));
+      assert.ok(count > 0, `expected tiles for ${name} on ${imageName}, got ${count}`);
+      const firstTileVertices = Number(wasm.tuile_n_sommets(0));
+      assert.ok(firstTileVertices >= 3, `expected a polygon for ${name} on ${imageName}, got ${firstTileVertices}`);
+    }
   }
 }
 
@@ -390,6 +397,35 @@ async function testRenderSkipsInvalidTilesWithoutCrashing() {
   assert.strictEqual(download.disabled, false);
 }
 
+async function testRenderFallsBackWhenSelectedWasmMethodThrows() {
+  const { elements, api } = buildHarness();
+  const sourceCanvas = elements.get("source-canvas");
+  const status = elements.get("wasm-status");
+  sourceCanvas.width = 10;
+  sourceCanvas.height = 10;
+
+  api.state.method = "triangle";
+  const calls = [];
+  api.setWasm({
+    couleur_moyenne(total, count) { return Math.round(total / count); },
+    km_init() {}, km_ajouter() {}, km_calculer() {},
+    km_r() { return 0; }, km_g() { return 0; }, km_b() { return 0; },
+    generer_tuiles(larg, haut, a, code) {
+      calls.push(code);
+      if (code === api.METHODES.triangle) throw new Error("index out of bounds");
+      assert.strictEqual(code, api.METHODES.hex);
+      return 1;
+    },
+    tuile_n_sommets() { return 4; },
+    tuile_sommet_x(i, j) { return [0, 10, 10, 0][j]; },
+    tuile_sommet_y(i, j) { return [0, 0, 10, 10][j]; },
+  });
+
+  await api.rendreSortie();
+  assert.deepStrictEqual(calls, [api.METHODES.triangle, api.METHODES.hex]);
+  assert.match(status.textContent, /repli WASM vers hex/);
+}
+
 function testKMeansSamplingStaysUnderWasmLimit() {
   const { api } = buildHarness();
   let sampleCount = 0;
@@ -434,9 +470,10 @@ async function run() {
   testAllMethodsGenerateTiles();
   testKMeansSamplingStaysUnderWasmLimit();
   testKMeansFallsBackToMeanWhenWasmThrows();
-  await testFlowerImageProducesTilesInWasm();
+  await testSampleImagesProduceTilesInWasm();
   await testRenderSanitizesTileSizeBeforeWasm();
   await testRenderSkipsInvalidTilesWithoutCrashing();
+  await testRenderFallsBackWhenSelectedWasmMethodThrows();
   console.log("Smoke tests passed.");
 }
 
