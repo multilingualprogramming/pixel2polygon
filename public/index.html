@@ -21,6 +21,7 @@
       </div>
       <nav class="tab-nav">
         <button type="button" class="tab active" id="tab-studio">Studio</button>
+        <button type="button" class="tab" id="tab-gallery">Galerie</button>
         <a class="tab tab-link" id="tab-github" href="https://github.com/multilingualprogramming/pixel2polygon"
           target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
@@ -259,6 +260,16 @@ multilingual run scripts/compile_wasm.ml</code></pre>
         </div>
       </section>
 
+      <!-- ── GALERIE ── -->
+      <section id="gallery-panel" class="gallery-panel" hidden>
+        <div class="gallery-header">
+          <h2>Galerie des tessellations</h2>
+          <p>Onze motifs de pavage disponibles &mdash; du carr&eacute; classique au dodécagone. Cliquez sur
+            <strong>Utiliser ce motif</strong> pour l&rsquo;appliquer dans le Studio.</p>
+        </div>
+        <div class="gallery-grid" id="gallery-grid"></div>
+      </section>
+
       <!-- Barre de statut -->
       <section class="hero">
         <p>Pixel2Polygon carrelage une image avec des polygones r&eacute;guliers et huit
@@ -268,7 +279,7 @@ multilingual run scripts/compile_wasm.ml</code></pre>
 
     </main>
 
-    <script type="module" src="app.js?v=2026-04-01-4"></script>
+    <script type="module" src="app.js?v=2026-04-02-1"></script>
   </body>
 
 </html>

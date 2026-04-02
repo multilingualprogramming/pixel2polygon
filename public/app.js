@@ -43,6 +43,20 @@ const EXPORTS_CODES_METHODES = {
   hex_tronque: "methode_hex_tronque",
 };
 
+const GALERIE_FORMES = [
+  { methode: "hex",                 nom: "Hexagone",                notation: "6.6.6",         desc: "Pavage r&eacute;gulier par hexagones &agrave; sommet pointu.",             c1: "#0a2a1a", c2: "#4ade80" },
+  { methode: "square",              nom: "Carr&eacute;",            notation: "4.4.4.4",       desc: "Grille orthogonale classique.",                                            c1: "#0a1a2a", c2: "#53b0ff" },
+  { methode: "triangle",            nom: "Triangle",                notation: "3.3.3.3.3.3",   desc: "Triangles &eacute;quilat&eacute;raux alternant haut et bas.",              c1: "#2a100a", c2: "#fb923c" },
+  { methode: "trihex",              nom: "Hexadeltille",            notation: "3.6.3.6",       desc: "Alternance r&eacute;guli&egrave;re de triangles et d&rsquo;hexagones.",    c1: "#100a2a", c2: "#a78bfa" },
+  { methode: "snub_trihex",         nom: "Hexadeltille snub",       notation: "3.3.3.3.6",     desc: "Hexagones entoures de triangles en spirale.",                             c1: "#2a0a18", c2: "#f472b6" },
+  { methode: "triangulaire_elongue",nom: "Triangulaire allong&eacute;", notation: "3.3.3.4.4", desc: "Bandes altern&eacute;es de triangles &eacute;quilat&eacute;raux et de carr&eacute;s.", c1: "#0a2a28", c2: "#2dd4bf" },
+  { methode: "carre_snub",          nom: "Carr&eacute; snub",       notation: "3.3.4.3.4",     desc: "Carr&eacute;s entoures de quatre triangles &eacute;quilat&eacute;raux.",   c1: "#2a0a10", c2: "#fb7185" },
+  { methode: "rhombitrihex",        nom: "Rhombitrihexagonal",      notation: "3.4.6.4",       desc: "Triangles, carr&eacute;s et hexagones en alternance r&eacute;guli&egrave;re.", c1: "#0a2a18", c2: "#34d399" },
+  { methode: "carre_tronque",       nom: "Carr&eacute; tronqu&eacute;", notation: "4.8.8",    desc: "Carr&eacute;s et octagones r&eacute;guliers. Proche du carrelage arabe.",  c1: "#2a200a", c2: "#fbbf24" },
+  { methode: "grand_rhombitrihex",  nom: "Grand rhombitrihexagonal",notation: "4.6.12",        desc: "Carr&eacute;s, hexagones et dod&eacute;cagones. Le plus complexe.",        c1: "#180a2a", c2: "#c084fc" },
+  { methode: "hex_tronque",         nom: "Hexagonal tronqu&eacute;",notation: "3.12.12",       desc: "Triangles et dod&eacute;cagones en alternance r&eacute;guli&egrave;re.",   c1: "#0a2028", c2: "#22d3ee" },
+];
+
 let wasm = null;
 let loadedImage = null;
 let renderToken = 0;
@@ -358,10 +372,78 @@ const planifierRendu = debounce(() => {
 }, 300);
 
 function basculerOnglet(nom) {
-  const panneaux = ["studio-panel", "source-panel"];
-  const onglets  = ["tab-studio", "tab-sources"];
-  panneaux.forEach((id) => { document.getElementById(id).hidden = (id !== `${nom}-panel`); });
-  onglets.forEach((id)  => { document.getElementById(id).classList.toggle("active", id === `tab-${nom}`); });
+  const panneaux = ["studio-panel", "source-panel", "gallery-panel"];
+  const onglets  = ["tab-studio", "tab-sources", "tab-gallery"];
+  panneaux.forEach((id) => { const el = document.getElementById(id); if (el) el.hidden = (id !== `${nom}-panel`); });
+  onglets.forEach((id)  => { const el = document.getElementById(id); if (el) el.classList.toggle("active", id === `tab-${nom}`); });
+}
+
+function dessinerApercu(canvasEl, forme) {
+  const W = canvasEl.width;
+  const H = canvasEl.height;
+  const ctx = canvasEl.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, forme.c1);
+  grad.addColorStop(1, forme.c2);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  if (!wasm) return;
+  try {
+    const pixelData = ctx.getImageData(0, 0, W, H).data;
+    if (typeof wasm.__ml_reset === "function") wasm.__ml_reset();
+    const tailleTuile = Math.max(coteSuretePourImage(W, H, forme.methode), 20);
+    const code = entierSecurise(METHODES[forme.methode], METHODES.hex, 0);
+    const nTuiles = Number(wasm.generer_tuiles(W, H, tailleTuile, code));
+    for (let ti = 0; ti < nTuiles; ti++) {
+      const n = Number(wasm.charger_tuile(ti));
+      const sommets = lireSortie(n);
+      if (!sommets) continue;
+      const couleur = couleurTuile(pixelData, W, H, sommets);
+      if (couleur) dessinerTuile(ctx, sommets, couleur, 1, "rgba(0,0,0,0.22)");
+    }
+  } catch (err) {
+    console.warn("[pixel2polygon] Apercu galerie echoue :", forme.methode, err);
+  }
+}
+
+function creerCartesGalerie() {
+  const grille = document.getElementById("gallery-grid");
+  if (!grille || grille.children.length > 0) return;
+  for (const forme of GALERIE_FORMES) {
+    const carte = document.createElement("article");
+    carte.className = "gallery-card";
+    carte.innerHTML = `
+      <div class="gallery-canvas-wrap">
+        <canvas id="gallery-canvas-${forme.methode}" width="240" height="160"></canvas>
+      </div>
+      <div class="gallery-card-body">
+        <div class="gallery-card-header">
+          <p class="gallery-card-name">${forme.nom}</p>
+          <span class="gallery-notation">${forme.notation}</span>
+        </div>
+        <p class="gallery-card-desc">${forme.desc}</p>
+        <button type="button" class="gallery-use-btn" data-methode="${forme.methode}">Utiliser ce motif &rarr;</button>
+      </div>`;
+    grille.appendChild(carte);
+  }
+  grille.addEventListener("click", (e) => {
+    const btn = e.target.closest(".gallery-use-btn");
+    if (btn) {
+      state.method = btn.dataset.methode;
+      const sel = document.getElementById("method-select");
+      if (sel) sel.value = state.method;
+      basculerOnglet("studio");
+      if (loadedImage) rendreSortie();
+    }
+  });
+}
+
+function rendreGalerie() {
+  creerCartesGalerie();
+  for (const forme of GALERIE_FORMES) {
+    const canvas = document.getElementById(`gallery-canvas-${forme.methode}`);
+    if (canvas) dessinerApercu(canvas, forme);
+  }
 }
 
 function lierControles() {
@@ -440,6 +522,7 @@ function lierControles() {
   });
 
   document.getElementById("tab-studio").addEventListener("click", () => basculerOnglet("studio"));
+  document.getElementById("tab-gallery").addEventListener("click", () => { basculerOnglet("gallery"); rendreGalerie(); });
 }
 
 async function init() {
