@@ -32,10 +32,13 @@ class MockElement {
     this.value = "";
     this.checked = false;
     this.textContent = "";
+    this.innerHTML = "";
     this.style = {};
     this.files = [];
     this.listeners = new Map();
     this.classList = new MockClassList();
+    this.children = [];
+    this.dataset = {};
   }
   addEventListener(type, handler) { this.listeners.set(type, handler); }
   dispatch(type, event = {}) {
@@ -43,6 +46,8 @@ class MockElement {
     if (handler) handler({ target: this, ...event });
   }
   click() { this.dispatch("click"); }
+  appendChild(child) { this.children.push(child); return child; }
+  closest(sel) { return this.classList.contains(sel.replace(/^\./, "")) ? this : null; }
   getContext() {
     return {
       drawImage() {}, fillRect() {},
@@ -59,8 +64,8 @@ function buildHarness() {
     "outline-width", "outline-width-display",
     "outline-color", "outline-opacity", "outline-opacity-display",
     "auto-apply", "btn-apply", "btn-new-image", "btn-download",
-    "file-input", "upload-zone", "studio-panel", "source-panel",
-    "tab-studio", "tab-sources", "processing-overlay",
+    "file-input", "upload-zone", "studio-panel", "source-panel", "gallery-panel",
+    "tab-studio", "tab-sources", "tab-gallery", "gallery-grid", "processing-overlay",
     "source-canvas", "output-canvas", "wasm-status", "canvas-area",
   ];
 
