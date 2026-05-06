@@ -148,32 +148,7 @@ function makeSortieBuffer(verts) {
   return buf;
 }
 
-function makeWasmMock(opts = {}) {
-  const squareVerts = [[0, 0], [10, 0], [10, 10], [0, 10]];
-  const sortieBuffer = opts.sortieBuffer || makeSortieBuffer(squareVerts);
-  const n = opts.nVerts ?? 4;
 
-  return {
-    memory: { buffer: sortieBuffer },
-    __sortiePtrBytes: 0,
-    __ml_reset() {},
-    sortie_ptr() { return 0.0 - 8; },  // offset so sortiePtrBytes = -8+8 = 0 bytes into buffer
-    generer_tuiles: opts.generer_tuiles || (() => n > 0 ? 1 : 0),
-    charger_tuile: opts.charger_tuile || (() => n),
-    methode_hexagone() { return 0; },
-    methode_carre() { return 1; },
-    methode_triangle() { return 2; },
-    methode_trihex() { return 3; },
-    methode_snub_trihex() { return 4; },
-    methode_triangulaire_elongue() { return 5; },
-    methode_carre_snub() { return 6; },
-    methode_rhombitrihex() { return 7; },
-    methode_carre_tronque() { return 8; },
-    methode_grand_rhombitrihex() { return 9; },
-    methode_hex_tronque() { return 10; },
-    ...opts,
-  };
-}
 
 // ── HTML smoke ────────────────────────────────────────────────
 
