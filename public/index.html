@@ -144,8 +144,8 @@
             <a href="https://github.com/multilingualprogramming/pixel2polygon" target="_blank"
               rel="noopener noreferrer">https://github.com/multilingualprogramming/pixel2polygon</a>
           </p>
-          <p>Ces fichiers <code>.ml</code> sont compil&eacute;s en WebAssembly par
-            <code>scripts/compile_wasm.ml</code>.
+          <p>Ces fichiers <code>.multi</code> sont compil&eacute;s en WebAssembly par
+            <code>scripts/compile_wasm.multi</code>.
             Le navigateur utilise ce binaire WASM pour les primitives de g&eacute;om&eacute;trie et de
             couleur, puis compose les tessellations dans l&rsquo;interface.
           </p>
@@ -159,7 +159,7 @@
             <div class="source-list">
 
               <article class="source-card source-card-file">
-                <h4><span class="filename-pill">src/hexagonify_wasm.ml</span></h4>
+                <h4><span class="filename-pill">src/hexagonify_wasm.multi</span></h4>
                 <p>Module WASM minimal &mdash; calcul des sommets d&rsquo;hexagones et de triangles
                   &eacute;quilat&eacute;raux, espacements, couleur moyenne. Compil&eacute; vers
                   <code>public/hexagonify.wasm</code>.
@@ -167,7 +167,7 @@
               </article>
 
               <article class="source-card source-card-file">
-                <h4><span class="filename-pill">src/hexagonify_canonique.ml</span></h4>
+                <h4><span class="filename-pill">src/hexagonify_canonique.multi</span></h4>
                 <p>Source canonique compl&egrave;te &mdash; g&eacute;om&eacute;trie int&eacute;grale,
                   mode <strong>kmeans</strong> via
                   <code>MiniBatchKMeans</code> (scikit-learn), masques PIL/NumPy, et
@@ -176,14 +176,14 @@
               </article>
 
               <article class="source-card source-card-file">
-                <h4><span class="filename-pill">src/main.ml</span></h4>
+                <h4><span class="filename-pill">src/main.multi</span></h4>
                 <p>Point d&rsquo;entr&eacute;e du bundle.
                   <code>importer hexagonify_wasm</code>
                 </p>
               </article>
 
               <article class="source-card source-card-file">
-                <h4><span class="filename-pill">scripts/compile_wasm.ml</span></h4>
+                <h4><span class="filename-pill">scripts/compile_wasm.multi</span></h4>
                 <p>Script de compilation — lit les sources multilingual, g&eacute;n&egrave;re le WAT via
                   <code>WATCodeGenerator</code> puis le binaire WASM avec
                   <code>wasmtime.wat2wasm</code>. Enti&egrave;rement &eacute;crit en multilingual
@@ -250,7 +250,7 @@
               <article class="source-card source-card-code">
                 <h4>Compilation</h4>
                 <pre><code>cd pixel2polygon
-multilingual run scripts/compile_wasm.ml</code></pre>
+multilingual run scripts/compile_wasm.multi</code></pre>
                 <p class="muted">G&eacute;n&egrave;re <code>public/hexagonify.wasm</code>
                   et <code>public/hexagonify.wat</code>.</p>
               </article>

@@ -14,7 +14,7 @@ All geometry computation runs in **WebAssembly** compiled from **French [Multili
 - Drag-and-drop / click / paste image upload
 - Before-and-after canvas view with one-click PNG download
 - Geometry (`sommet_hex_x`, `espacement_horiz`, `hauteur_tri`, `couleur_moyenne`, …) exported from WASM with French identifiers
-- Full canonical implementation — including **KMeans dominant-colour** mode via `MiniBatchKMeans` — available in `src/hexagonify_canonique.ml`
+- Full canonical implementation — including **KMeans dominant-colour** mode via `MiniBatchKMeans` — available in `src/hexagonify_canonique.multi`
 
 ---
 
@@ -23,11 +23,11 @@ All geometry computation runs in **WebAssembly** compiled from **French [Multili
 ```
 pixel2polygon/
 ├── src/
-│   ├── hexagonify_wasm.ml       # WASM module — geometry + mean colour (French multilingual)
-│   ├── hexagonify_canonique.ml  # Canonical source — full algorithm + KMeans (French multilingual)
-│   └── main.ml                  # Entry point: importer hexagonify_wasm
+│   ├── hexagonify_wasm.multi       # WASM module — geometry + mean colour (French multilingual)
+│   ├── hexagonify_canonique.multi  # Canonical source — full algorithm + KMeans (French multilingual)
+│   └── main.multi                  # Entry point: importer hexagonify_wasm
 ├── scripts/
-│   └── compile_wasm.ml          # Build script (French multilingual)
+│   └── compile_wasm.multi       # Build script (French multilingual)
 ├── public/
 │   ├── index.html               # Web UI
 │   ├── style.css                # Dark-theme stylesheet
@@ -42,7 +42,7 @@ pixel2polygon/
 ## Architecture
 
 ```
-src/hexagonify_wasm.ml   (French multilingual)
+src/hexagonify_wasm.multi   (French multilingual)
         │
         ▼
   Lexer / Parser
@@ -77,7 +77,7 @@ pip install -r requirements-build.txt
 ### Compile
 
 ```bash
-multilingual run scripts/compile_wasm.ml
+multilingual run scripts/compile_wasm.multi
 ```
 
 Outputs:
@@ -90,7 +90,7 @@ Outputs:
 To point the build script at a local development checkout of the multilingual runtime:
 
 ```bash
-MULTILINGUAL_DEV_PATH=/path/to/multilingual multilingual run scripts/compile_wasm.ml
+MULTILINGUAL_DEV_PATH=/path/to/multilingual multilingual run scripts/compile_wasm.multi
 ```
 
 ---
@@ -127,7 +127,7 @@ The smoke tests validate that the main UI controls are present, the shape select
 
 ## Source files
 
-### `src/hexagonify_wasm.ml` — WASM module
+### `src/hexagonify_wasm.multi` — WASM module
 
 Written in **French multilingual**. Exports pure numeric functions that the JavaScript frontend calls per tile:
 
@@ -143,7 +143,7 @@ Written in **French multilingual**. Exports pure numeric functions that the Java
 | `couleur_moyenne(total, compte)` | Per-channel colour mean: `round(total / compte)` |
 | `methode_hexagone()` / `methode_carre()` / `methode_triangle()` | Method codes (0 / 1 / 2) |
 
-### `src/hexagonify_canonique.ml` — canonical source
+### `src/hexagonify_canonique.multi` — canonical source
 
 Written in **French multilingual**. Implements the complete algorithm as a Python-compiled program, including:
 
@@ -156,7 +156,7 @@ Written in **French multilingual**. Implements the complete algorithm as a Pytho
 Run canonically with:
 
 ```bash
-multilingual run src/hexagonify_canonique.ml
+multilingual run src/hexagonify_canonique.multi
 ```
 
 Requires `Pillow`, `numpy`, and optionally `scikit-learn`:
@@ -165,12 +165,12 @@ Requires `Pillow`, `numpy`, and optionally `scikit-learn`:
 pip install pillow numpy scikit-learn
 ```
 
-### `scripts/compile_wasm.ml` — build script
+### `scripts/compile_wasm.multi` — build script
 
 Written in **French multilingual**. Mirrors the pattern established by [Cellcosmos](https://github.com/multilingualprogramming/cellcosmos):
 
 1. Locates the project root
-2. Reads and bundles `src/main.ml` + `src/hexagonify_wasm.ml`
+2. Reads and bundles `src/main.multi` + `src/hexagonify_wasm.multi`
 3. Lexes and parses the bundle with `language="fr"`
 4. Generates WAT via `WATCodeGenerator`
 5. Compiles to binary WASM via `wasmtime.wat2wasm`
@@ -182,10 +182,10 @@ Written in **French multilingual**. Mirrors the pattern established by [Cellcosm
 
 | Mode | Where implemented | How |
 |------|-------------------|-----|
-| **Moyenne** (mean) | `hexagonify_wasm.ml` → WASM → browser | Per-channel arithmetic mean of all pixels inside the tile |
-| **KMeans** | `hexagonify_canonique.ml` → Python | `MiniBatchKMeans` finds the dominant cluster centroid; falls back to mean if scikit-learn is unavailable |
+| **Moyenne** (mean) | `hexagonify_wasm.multi` → WASM → browser | Per-channel arithmetic mean of all pixels inside the tile |
+| **KMeans** | `hexagonify_canonique.multi` → Python | `MiniBatchKMeans` finds the dominant cluster centroid; falls back to mean if scikit-learn is unavailable |
 
-The web interface uses **moyenne** (computed in WASM). The canonical `.ml` source exposes both modes for offline / batch use.
+The web interface uses **moyenne** (computed in WASM). The canonical `.multi` source exposes both modes for offline / batch use.
 
 ---
 
@@ -199,4 +199,4 @@ The web interface uses **moyenne** (computed in WASM). The canonical `.ml` sourc
 
 ## Relation to `hexagonify.py`
 
-`hexagonify_canonique.ml` is a faithful French-multilingual translation of the original [`hexagonify.py`](../Images/hexagonify.py) algorithm, preserving the same geometry helpers, mask generation, and KMeans colour logic. `hexagonify_wasm.ml` is the minimal numeric subset of that algorithm that maps cleanly to WebAssembly.
+`hexagonify_canonique.multi` is a faithful French-multilingual translation of the original [`hexagonify.py`](../Images/hexagonify.py) algorithm, preserving the same geometry helpers, mask generation, and KMeans colour logic. `hexagonify_wasm.multi` is the minimal numeric subset of that algorithm that maps cleanly to WebAssembly.

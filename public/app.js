@@ -111,7 +111,7 @@ async function chargerWasm() {
     document.getElementById("upload-zone").style.opacity = "1";
   } catch (err) {
     wasm = null;
-    status.textContent = "WASM requis. Compilez d'abord avec : multilingual run scripts/compile_wasm.ml";
+    status.textContent = "WASM requis. Compilez d'abord avec : multilingual run scripts/compile_wasm.multi";
     btnApply.disabled = true;
     document.getElementById("upload-zone").style.opacity = "0.4";
     document.getElementById("upload-zone").style.pointerEvents = "none";

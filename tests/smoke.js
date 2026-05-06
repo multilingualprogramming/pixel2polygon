@@ -467,10 +467,10 @@ function readJpegSize(filePath) {
 function ensureProjectWasm() {
   if (fs.existsSync(WASM_PATH)) return;
   childProcess.execFileSync(
-    "python", ["-m", "multilingualprogramming", "scripts/compile_wasm.ml"],
+    "python", ["-m", "multilingualprogramming", "scripts/compile_wasm.multi"],
     { cwd: ROOT, stdio: "pipe" }
   );
-  assert.ok(fs.existsSync(WASM_PATH), "expected compile_wasm.ml to generate hexagonify.wasm");
+  assert.ok(fs.existsSync(WASM_PATH), "expected compile_wasm.multi to generate hexagonify.wasm");
 }
 
 async function instantiateProjectWasm() {
